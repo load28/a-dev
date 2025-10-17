@@ -4,19 +4,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AgentType {
-    ClaudeCode,
-    GPT4,
-    Gemini,
-    Codex,
+    Claude,
 }
 
 impl std::fmt::Display for AgentType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AgentType::ClaudeCode => write!(f, "claude-code"),
-            AgentType::GPT4 => write!(f, "gpt-4"),
-            AgentType::Gemini => write!(f, "gemini"),
-            AgentType::Codex => write!(f, "codex"),
+            AgentType::Claude => write!(f, "claude"),
         }
     }
 }
@@ -26,12 +20,17 @@ impl std::str::FromStr for AgentType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
-            "claude-code" | "claude" => Ok(AgentType::ClaudeCode),
-            "gpt-4" | "gpt4" => Ok(AgentType::GPT4),
-            "gemini" => Ok(AgentType::Gemini),
-            "codex" => Ok(AgentType::Codex),
-            _ => Err(format!("Unknown agent type: {}", s)),
+            "claude" | "claude-code" | "claude-3" | "claude-opus" | "claude-sonnet" => {
+                Ok(AgentType::Claude)
+            }
+            _ => Err(format!("Unsupported agent type: {}. Only Claude is supported.", s)),
         }
+    }
+}
+
+impl Default for AgentType {
+    fn default() -> Self {
+        AgentType::Claude
     }
 }
 
@@ -88,6 +87,14 @@ pub trait AIAgent: Send + Sync {
         code: &str,
         language: &str,
     ) -> crate::Result<Vec<SecurityIssue>>;
+
+    /// Chat with JSON mode (structured output)
+    /// System prompt and user prompt are combined to request structured JSON response
+    async fn chat_json(
+        &self,
+        system_prompt: &str,
+        user_prompt: &str,
+    ) -> crate::Result<String>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -127,48 +134,21 @@ impl BaseAgent {
 
     /// Build prompt for task execution
     pub fn build_task_prompt(&self, task: &Task, repo_path: &str) -> String {
+        let system_prompt = include_str!("../prompts/task_execution_system.txt");
+
         format!(
-            r#"
-Task: {}
-Description: {}
-
-Repository: {}
-
-Instructions:
-{}
-
-Please complete this task following best practices:
-1. Write clean, maintainable code
-2. Include appropriate error handling
-3. Add tests if applicable
-4. Follow the existing code style
-5. Create meaningful commit messages
-
-Return the list of files changed and a summary of changes.
-"#,
-            task.title, task.description, repo_path, task.prompt
+            "{}\n\n## 작업 정보\n\n작업명: {}\n설명: {}\n저장소 경로: {}\n\n상세 지침:\n{}",
+            system_prompt, task.title, task.description, repo_path, task.prompt
         )
     }
 
     /// Build prompt for code review
     pub fn build_review_prompt(&self, pr_diff: &str, comments: &[String]) -> String {
+        let system_prompt = include_str!("../prompts/code_review_system.txt");
+
         format!(
-            r#"
-Review the following code changes and address the review comments:
-
-Code Changes:
-```diff
-{}
-```
-
-Review Comments:
-{}
-
-Please provide:
-1. Specific fixes for each review comment
-2. Any additional improvements you identify
-3. Updated code that addresses all concerns
-"#,
+            "{}\n\n## 코드 변경사항\n\n```diff\n{}\n```\n\n## 리뷰 코멘트\n\n{}",
+            system_prompt,
             pr_diff,
             comments.join("\n")
         )
@@ -176,20 +156,11 @@ Please provide:
 
     /// Build prompt for CI fix
     pub fn build_ci_fix_prompt(&self, ci_logs: &str) -> String {
+        let system_prompt = include_str!("../prompts/ci_fix_system.txt");
+
         format!(
-            r#"
-The CI pipeline has failed with the following errors:
-
-```
-{}
-```
-
-Please analyze the errors and provide:
-1. Root cause of each failure
-2. Specific fixes needed
-3. Code changes to resolve the issues
-4. Any additional improvements to prevent future failures
-"#,
+            "{}\n\n## CI 실패 로그\n\n```\n{}\n```",
+            system_prompt,
             ci_logs
         )
     }

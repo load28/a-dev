@@ -59,8 +59,9 @@ impl Task {
     }
 
     pub fn with_dependencies(mut self, deps: Vec<String>) -> Self {
+        let is_empty = deps.is_empty();
         self.dependencies = deps;
-        self.status = if deps.is_empty() {
+        self.status = if is_empty {
             TaskStatus::Ready
         } else {
             TaskStatus::WaitingDependencies

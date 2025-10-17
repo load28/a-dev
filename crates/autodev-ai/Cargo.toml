@@ -16,9 +16,6 @@ async-trait = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 
-# AI SDKs
-async-openai = "0.19"
-
 # Internal
 autodev-core = { workspace = true }
 

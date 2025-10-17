@@ -1,0 +1,168 @@
+[
+  {
+    "domain": "translation",
+    "user_prompt": "모든 문서 페이지(home, about, pricing, docs, blog)를 한국어, 일본어, 중국어, 스페인어로 번역해주세요",
+    "assistant_response": {
+      "analysis": "사용자는 5개 페이지를 4개 언어로 번역하길 원합니다. 각 페이지-언어 조합은 독립적으로 실행 가능하므로 완전 병렬 처리 가능합니다.",
+      "domain": "translation",
+      "estimated_complexity": "medium",
+      "tasks": [
+        {"id": "translate_home_ko", "title": "번역: Home 페이지 → 한국어", "description": "Home 페이지의 모든 텍스트 콘텐츠를 한국어로 번역", "dependencies": [], "estimated_duration_minutes": 30, "tags": ["translation", "korean"]},
+        {"id": "translate_home_ja", "title": "번역: Home 페이지 → 일본어", "description": "Home 페이지의 모든 텍스트 콘텐츠를 일본어로 번역", "dependencies": [], "estimated_duration_minutes": 30, "tags": ["translation", "japanese"]},
+        {"id": "translate_home_zh", "title": "번역: Home 페이지 → 중국어", "description": "Home 페이지의 모든 텍스트 콘텐츠를 중국어로 번역", "dependencies": [], "estimated_duration_minutes": 30, "tags": ["translation", "chinese"]},
+        {"id": "translate_home_es", "title": "번역: Home 페이지 → 스페인어", "description": "Home 페이지의 모든 텍스트 콘텐츠를 스페인어로 번역", "dependencies": [], "estimated_duration_minutes": 30, "tags": ["translation", "spanish"]},
+        {"id": "translate_about_ko", "title": "번역: About 페이지 → 한국어", "description": "About 페이지의 모든 텍스트 콘텐츠를 한국어로 번역", "dependencies": [], "estimated_duration_minutes": 25, "tags": ["translation", "korean"]},
+        {"id": "translate_about_ja", "title": "번역: About 페이지 → 일본어", "description": "About 페이지의 모든 텍스트 콘텐츠를 일본어로 번역", "dependencies": [], "estimated_duration_minutes": 25, "tags": ["translation", "japanese"]},
+        {"id": "translate_about_zh", "title": "번역: About 페이지 → 중국어", "description": "About 페이지의 모든 텍스트 콘텐츠를 중국어로 번역", "dependencies": [], "estimated_duration_minutes": 25, "tags": ["translation", "chinese"]},
+        {"id": "translate_about_es", "title": "번역: About 페이지 → 스페인어", "description": "About 페이지의 모든 텍스트 콘텐츠를 스페인어로 번역", "dependencies": [], "estimated_duration_minutes": 25, "tags": ["translation", "spanish"]},
+        {"id": "translate_pricing_ko", "title": "번역: Pricing 페이지 → 한국어", "description": "Pricing 페이지의 모든 텍스트 콘텐츠를 한국어로 번역", "dependencies": [], "estimated_duration_minutes": 20, "tags": ["translation", "korean"]},
+        {"id": "translate_pricing_ja", "title": "번역: Pricing 페이지 → 일본어", "description": "Pricing 페이지의 모든 텍스트 콘텐츠를 일본어로 번역", "dependencies": [], "estimated_duration_minutes": 20, "tags": ["translation", "japanese"]},
+        {"id": "translate_pricing_zh", "title": "번역: Pricing 페이지 → 중국어", "description": "Pricing 페이지의 모든 텍스트 콘텐츠를 중국어로 번역", "dependencies": [], "estimated_duration_minutes": 20, "tags": ["translation", "chinese"]},
+        {"id": "translate_pricing_es", "title": "번역: Pricing 페이지 → 스페인어", "description": "Pricing 페이지의 모든 텍스트 콘텐츠를 스페인어로 번역", "dependencies": [], "estimated_duration_minutes": 20, "tags": ["translation", "spanish"]},
+        {"id": "translate_docs_ko", "title": "번역: Docs 페이지 → 한국어", "description": "Docs 페이지의 모든 텍스트 콘텐츠를 한국어로 번역", "dependencies": [], "estimated_duration_minutes": 40, "tags": ["translation", "korean"]},
+        {"id": "translate_docs_ja", "title": "번역: Docs 페이지 → 일본어", "description": "Docs 페이지의 모든 텍스트 콘텐츠를 일본어로 번역", "dependencies": [], "estimated_duration_minutes": 40, "tags": ["translation", "japanese"]},
+        {"id": "translate_docs_zh", "title": "번역: Docs 페이지 → 중국어", "description": "Docs 페이지의 모든 텍스트 콘텐츠를 중국어로 번역", "dependencies": [], "estimated_duration_minutes": 40, "tags": ["translation", "chinese"]},
+        {"id": "translate_docs_es", "title": "번역: Docs 페이지 → 스페인어", "description": "Docs 페이지의 모든 텍스트 콘텐츠를 스페인어로 번역", "dependencies": [], "estimated_duration_minutes": 40, "tags": ["translation", "spanish"]},
+        {"id": "translate_blog_ko", "title": "번역: Blog 페이지 → 한국어", "description": "Blog 페이지의 모든 텍스트 콘텐츠를 한국어로 번역", "dependencies": [], "estimated_duration_minutes": 35, "tags": ["translation", "korean"]},
+        {"id": "translate_blog_ja", "title": "번역: Blog 페이지 → 일본어", "description": "Blog 페이지의 모든 텍스트 콘텐츠를 일본어로 번역", "dependencies": [], "estimated_duration_minutes": 35, "tags": ["translation", "japanese"]},
+        {"id": "translate_blog_zh", "title": "번역: Blog 페이지 → 중국어", "description": "Blog 페이지의 모든 텍스트 콘텐츠를 중국어로 번역", "dependencies": [], "estimated_duration_minutes": 35, "tags": ["translation", "chinese"]},
+        {"id": "translate_blog_es", "title": "번역: Blog 페이지 → 스페인어", "description": "Blog 페이지의 모든 텍스트 콘텐츠를 스페인어로 번역", "dependencies": [], "estimated_duration_minutes": 35, "tags": ["translation", "spanish"]}
+      ],
+      "parallel_batches": [
+        ["translate_home_ko", "translate_home_ja", "translate_home_zh", "translate_home_es", "translate_about_ko", "translate_about_ja", "translate_about_zh", "translate_about_es", "translate_pricing_ko", "translate_pricing_ja", "translate_pricing_zh", "translate_pricing_es", "translate_docs_ko", "translate_docs_ja", "translate_docs_zh", "translate_docs_es", "translate_blog_ko", "translate_blog_ja", "translate_blog_zh", "translate_blog_es"]
+      ],
+      "critical_path": ["translate_docs_ko"],
+      "total_estimated_minutes": 580
+    }
+  },
+  {
+    "domain": "security",
+    "user_prompt": "RPC 서버 구현에 대해 인증, 권한 부여, 입력 검증, SQL 인젝션, XSS 취약점을 포함한 종합적인 보안 감사를 수행해주세요",
+    "assistant_response": {
+      "analysis": "5가지 보안 영역에 대한 종합 감사입니다. 각 영역은 독립적으로 검사 가능하므로 병렬 실행이 적합합니다.",
+      "domain": "security",
+      "estimated_complexity": "high",
+      "tasks": [
+        {"id": "audit_authentication", "title": "인증 메커니즘 보안 감사", "description": "JWT 토큰 검증, 세션 관리, 비밀번호 저장 방식 등 인증 관련 보안 취약점 검사", "dependencies": [], "estimated_duration_minutes": 60, "tags": ["security", "authentication"]},
+        {"id": "audit_authorization", "title": "권한 부여 로직 보안 감사", "description": "RBAC/ABAC 구현, 권한 상승 취약점, 리소스 접근 제어 검사", "dependencies": [], "estimated_duration_minutes": 45, "tags": ["security", "authorization"]},
+        {"id": "audit_input_validation", "title": "입력 검증 보안 감사", "description": "모든 RPC 메서드의 입력 파라미터 검증 로직 검사, 타입 안정성 확인", "dependencies": [], "estimated_duration_minutes": 50, "tags": ["security", "validation"]},
+        {"id": "audit_sql_injection", "title": "SQL 인젝션 취약점 검사", "description": "동적 쿼리 생성 지점 식별, Prepared Statement 사용 여부 확인, ORM 안전성 검증", "dependencies": [], "estimated_duration_minutes": 55, "tags": ["security", "sql-injection"]},
+        {"id": "audit_xss", "title": "XSS 취약점 검사", "description": "사용자 입력이 출력되는 모든 지점 식별, HTML escaping 적용 여부, CSP 헤더 검증", "dependencies": [], "estimated_duration_minutes": 40, "tags": ["security", "xss"]},
+        {"id": "generate_security_report", "title": "보안 감사 보고서 생성", "description": "모든 감사 결과를 종합하여 우선순위별 취약점 목록 및 수정 권장사항 작성", "dependencies": ["audit_authentication", "audit_authorization", "audit_input_validation", "audit_sql_injection", "audit_xss"], "estimated_duration_minutes": 30, "tags": ["security", "reporting"]}
+      ],
+      "parallel_batches": [
+        ["audit_authentication", "audit_authorization", "audit_input_validation", "audit_sql_injection", "audit_xss"],
+        ["generate_security_report"]
+      ],
+      "critical_path": ["audit_authentication", "generate_security_report"],
+      "total_estimated_minutes": 280
+    }
+  },
+  {
+    "domain": "feature",
+    "user_prompt": "아바타 업로드, 자기소개 편집, 프라이버시 설정 기능이 있는 사용자 프로필 관리 기능을 추가해주세요",
+    "assistant_response": {
+      "analysis": "사용자 프로필 관리 기능 추가입니다. Backend API → Frontend UI → Integration 순서로 진행하며, 데이터베이스 스키마 변경이 선행되어야 합니다.",
+      "domain": "feature",
+      "estimated_complexity": "high",
+      "tasks": [
+        {"id": "design_db_schema", "title": "DB 스키마 설계 및 마이그레이션", "description": "user_profiles 테이블 설계 (avatar_url, bio, privacy_settings 컬럼), 마이그레이션 SQL 작성 및 실행", "dependencies": [], "estimated_duration_minutes": 45, "tags": ["database", "backend"]},
+        {"id": "implement_avatar_upload_api", "title": "아바타 업로드 API 구현", "description": "이미지 업로드 엔드포인트, S3/스토리지 연동, 이미지 리사이징, 파일 타입 검증", "dependencies": ["design_db_schema"], "estimated_duration_minutes": 90, "tags": ["backend", "api"]},
+        {"id": "implement_profile_crud_api", "title": "프로필 CRUD API 구현", "description": "GET/PUT /api/users/:id/profile 엔드포인트, bio 업데이트, privacy settings 관리", "dependencies": ["design_db_schema"], "estimated_duration_minutes": 60, "tags": ["backend", "api"]},
+        {"id": "implement_profile_ui", "title": "프로필 관리 UI 구현", "description": "프로필 페이지 컴포넌트, 아바타 업로드 위젯, bio 에디터, privacy 토글", "dependencies": ["implement_avatar_upload_api", "implement_profile_crud_api"], "estimated_duration_minutes": 120, "tags": ["frontend", "ui"]},
+        {"id": "write_api_tests", "title": "API 테스트 작성", "description": "아바타 업로드 테스트, 프로필 CRUD 테스트, 권한 검증 테스트", "dependencies": ["implement_avatar_upload_api", "implement_profile_crud_api"], "estimated_duration_minutes": 60, "tags": ["testing", "backend"]},
+        {"id": "write_ui_tests", "title": "UI 테스트 작성", "description": "E2E 테스트: 프로필 편집 플로우, 아바타 업로드 플로우, privacy 설정 변경", "dependencies": ["implement_profile_ui"], "estimated_duration_minutes": 45, "tags": ["testing", "frontend"]},
+        {"id": "update_documentation", "title": "API 문서 및 사용자 가이드 업데이트", "description": "Swagger/OpenAPI 스펙 업데이트, 사용자 가이드에 새 기능 설명 추가", "dependencies": ["implement_avatar_upload_api", "implement_profile_crud_api"], "estimated_duration_minutes": 30, "tags": ["documentation"]}
+      ],
+      "parallel_batches": [
+        ["design_db_schema"],
+        ["implement_avatar_upload_api", "implement_profile_crud_api"],
+        ["implement_profile_ui", "write_api_tests", "update_documentation"],
+        ["write_ui_tests"]
+      ],
+      "critical_path": ["design_db_schema", "implement_avatar_upload_api", "implement_profile_ui", "write_ui_tests"],
+      "total_estimated_minutes": 450
+    }
+  },
+  {
+    "domain": "refactoring",
+    "user_prompt": "모놀리식 인증 서비스를 마이크로서비스로 리팩토링해주세요: 인증 서비스, 권한 부여 서비스, 사용자 관리 서비스",
+    "assistant_response": {
+      "analysis": "모놀리식 인증 서비스를 3개 마이크로서비스로 분리합니다. 인터페이스 정의 → 각 서비스 구현 → 통합 순서로 진행합니다.",
+      "domain": "refactoring",
+      "estimated_complexity": "high",
+      "tasks": [
+        {"id": "define_service_interfaces", "title": "마이크로서비스 인터페이스 정의", "description": "각 서비스의 API 스펙, 데이터 모델, 통신 프로토콜(gRPC/REST) 정의", "dependencies": [], "estimated_duration_minutes": 90, "tags": ["architecture", "design"]},
+        {"id": "setup_auth_service", "title": "인증 서비스 구현", "description": "로그인, 로그아웃, 토큰 발급/검증 기능을 독립 서비스로 분리", "dependencies": ["define_service_interfaces"], "estimated_duration_minutes": 180, "tags": ["backend", "microservice"]},
+        {"id": "setup_authz_service", "title": "권한 부여 서비스 구현", "description": "RBAC 로직, 권한 체크, 정책 관리를 독립 서비스로 분리", "dependencies": ["define_service_interfaces"], "estimated_duration_minutes": 150, "tags": ["backend", "microservice"]},
+        {"id": "setup_user_mgmt_service", "title": "사용자 관리 서비스 구현", "description": "사용자 CRUD, 프로필 관리, 비밀번호 재설정을 독립 서비스로 분리", "dependencies": ["define_service_interfaces"], "estimated_duration_minutes": 120, "tags": ["backend", "microservice"]},
+        {"id": "implement_service_mesh", "title": "서비스 메시 구성", "description": "서비스 간 통신, 로드 밸런싱, 서킷 브레이커, 분산 추적 설정", "dependencies": ["setup_auth_service", "setup_authz_service", "setup_user_mgmt_service"], "estimated_duration_minutes": 120, "tags": ["infrastructure", "devops"]},
+        {"id": "migrate_database", "title": "데이터베이스 분리 및 마이그레이션", "description": "각 서비스별 독립 DB 설정, 데이터 마이그레이션 스크립트 작성 및 실행", "dependencies": ["setup_auth_service", "setup_authz_service", "setup_user_mgmt_service"], "estimated_duration_minutes": 150, "tags": ["database", "migration"]},
+        {"id": "update_api_gateway", "title": "API Gateway 업데이트", "description": "라우팅 규칙 업데이트, 각 마이크로서비스로 요청 프록시 설정", "dependencies": ["implement_service_mesh"], "estimated_duration_minutes": 60, "tags": ["infrastructure", "api-gateway"]},
+        {"id": "write_integration_tests", "title": "통합 테스트 작성", "description": "서비스 간 통신 테스트, E2E 인증/인가 플로우 테스트", "dependencies": ["update_api_gateway", "migrate_database"], "estimated_duration_minutes": 90, "tags": ["testing", "integration"]},
+        {"id": "create_deployment_pipeline", "title": "배포 파이프라인 구성", "description": "각 서비스별 CI/CD 파이프라인, Docker 이미지 빌드, K8s 배포 설정", "dependencies": ["write_integration_tests"], "estimated_duration_minutes": 120, "tags": ["devops", "ci-cd"]}
+      ],
+      "parallel_batches": [
+        ["define_service_interfaces"],
+        ["setup_auth_service", "setup_authz_service", "setup_user_mgmt_service"],
+        ["implement_service_mesh", "migrate_database"],
+        ["update_api_gateway"],
+        ["write_integration_tests"],
+        ["create_deployment_pipeline"]
+      ],
+      "critical_path": ["define_service_interfaces", "setup_auth_service", "implement_service_mesh", "update_api_gateway", "write_integration_tests", "create_deployment_pipeline"],
+      "total_estimated_minutes": 1080
+    }
+  },
+  {
+    "domain": "bugfix",
+    "user_prompt": "WebSocket 연결 핸들러의 메모리 누수로 인해 24시간 후 서버가 크래시되는 문제를 수정해주세요",
+    "assistant_response": {
+      "analysis": "메모리 누수로 인한 서버 크래시 버그입니다. 재현 → 프로파일링 → 원인 분석 → 수정 → 검증 순서로 진행합니다.",
+      "domain": "bugfix",
+      "estimated_complexity": "medium",
+      "tasks": [
+        {"id": "reproduce_memory_leak", "title": "메모리 누수 재현", "description": "테스트 환경에서 WebSocket 연결 시뮬레이션, 메모리 사용량 모니터링, 24시간 압축 테스트", "dependencies": [], "estimated_duration_minutes": 60, "tags": ["debugging", "testing"]},
+        {"id": "profile_memory_usage", "title": "메모리 프로파일링", "description": "Valgrind/heaptrack 등으로 메모리 할당 추적, 누수 지점 식별", "dependencies": ["reproduce_memory_leak"], "estimated_duration_minutes": 45, "tags": ["debugging", "profiling"]},
+        {"id": "analyze_root_cause", "title": "근본 원인 분석", "description": "코드 리뷰를 통해 연결 핸들러의 리소스 해제 로직 검토, 참조 카운트 확인", "dependencies": ["profile_memory_usage"], "estimated_duration_minutes": 30, "tags": ["debugging", "analysis"]},
+        {"id": "implement_fix", "title": "메모리 누수 수정", "description": "연결 종료 시 리소스 정리 로직 추가, RAII 패턴 적용, 약한 참조 사용", "dependencies": ["analyze_root_cause"], "estimated_duration_minutes": 60, "tags": ["bugfix", "implementation"]},
+        {"id": "add_regression_test", "title": "회귀 테스트 추가", "description": "메모리 누수 방지 테스트, 장시간 연결 테스트 자동화", "dependencies": ["implement_fix"], "estimated_duration_minutes": 45, "tags": ["testing", "regression"]},
+        {"id": "verify_fix", "title": "수정 검증", "description": "24시간 스트레스 테스트 재실행, 메모리 사용량 안정성 확인", "dependencies": ["add_regression_test"], "estimated_duration_minutes": 90, "tags": ["testing", "verification"]}
+      ],
+      "parallel_batches": [
+        ["reproduce_memory_leak"],
+        ["profile_memory_usage"],
+        ["analyze_root_cause"],
+        ["implement_fix"],
+        ["add_regression_test"],
+        ["verify_fix"]
+      ],
+      "critical_path": ["reproduce_memory_leak", "profile_memory_usage", "analyze_root_cause", "implement_fix", "add_regression_test", "verify_fix"],
+      "total_estimated_minutes": 330
+    }
+  },
+  {
+    "domain": "testing",
+    "user_prompt": "결제 처리 모듈의 테스트 커버리지를 90%로 높여주세요",
+    "assistant_response": {
+      "analysis": "결제 처리 모듈의 테스트 커버리지를 90%로 높이는 작업입니다. 현재 커버리지 분석 → 미커버 영역 식별 → 테스트 작성 순서로 진행합니다.",
+      "domain": "testing",
+      "estimated_complexity": "medium",
+      "tasks": [
+        {"id": "analyze_current_coverage", "title": "현재 테스트 커버리지 분석", "description": "pytest-cov/coverage.py 실행, 미커버 라인/브랜치 식별, 우선순위 결정", "dependencies": [], "estimated_duration_minutes": 30, "tags": ["testing", "analysis"]},
+        {"id": "write_payment_gateway_tests", "title": "결제 게이트웨이 통합 테스트", "description": "Stripe/PayPal API mocking, 성공/실패 시나리오, 타임아웃 처리 테스트", "dependencies": ["analyze_current_coverage"], "estimated_duration_minutes": 90, "tags": ["testing", "integration"]},
+        {"id": "write_refund_tests", "title": "환불 로직 테스트", "description": "전액 환불, 부분 환불, 중복 환불 방지, 환불 제한 조건 테스트", "dependencies": ["analyze_current_coverage"], "estimated_duration_minutes": 60, "tags": ["testing", "unit"]},
+        {"id": "write_fraud_detection_tests", "title": "사기 탐지 로직 테스트", "description": "이상 패턴 감지, 블랙리스트 체크, 리스크 스코어 계산 테스트", "dependencies": ["analyze_current_coverage"], "estimated_duration_minutes": 75, "tags": ["testing", "unit"]},
+        {"id": "write_edge_case_tests", "title": "엣지 케이스 테스트", "description": "통화 변환 오류, 네트워크 장애, 동시성 이슈, 금액 정밀도 테스트", "dependencies": ["analyze_current_coverage"], "estimated_duration_minutes": 60, "tags": ["testing", "edge-cases"]},
+        {"id": "verify_90_percent_coverage", "title": "90% 커버리지 달성 검증", "description": "최종 커버리지 측정, 리포트 생성, CI에 커버리지 게이트 추가", "dependencies": ["write_payment_gateway_tests", "write_refund_tests", "write_fraud_detection_tests", "write_edge_case_tests"], "estimated_duration_minutes": 30, "tags": ["testing", "verification"]}
+      ],
+      "parallel_batches": [
+        ["analyze_current_coverage"],
+        ["write_payment_gateway_tests", "write_refund_tests", "write_fraud_detection_tests", "write_edge_case_tests"],
+        ["verify_90_percent_coverage"]
+      ],
+      "critical_path": ["analyze_current_coverage", "write_payment_gateway_tests", "verify_90_percent_coverage"],
+      "total_estimated_minutes": 345
+    }
+  }
+]

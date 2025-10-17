@@ -20,8 +20,11 @@ pub enum Error {
     #[error("Prompt too long: {0} tokens")]
     PromptTooLong(usize),
 
-    #[error("OpenAI error: {0}")]
-    OpenAI(#[from] async_openai::error::OpenAIError),
+    #[error("Parse error: {0}")]
+    ParseError(String),
+
+    #[error("Validation error: {0}")]
+    ValidationError(String),
 
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
