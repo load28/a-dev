@@ -87,15 +87,16 @@ impl GitHubClient {
         body: String,
         head: String,
         base: String,
+        draft: bool,
     ) -> Result<PullRequest> {
-        tracing::info!("Creating PR: {} ({} -> {})", title, head, base);
+        tracing::info!("Creating PR: {} ({} -> {}) [draft: {}]", title, head, base, draft);
 
         let pr = self
             .client
             .pulls(&repo.owner, &repo.name)
             .create(title, head, base)
             .body(body)
-            .draft(false)
+            .draft(draft)
             .send()
             .await?;
 

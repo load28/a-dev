@@ -107,6 +107,7 @@ impl TaskExecutor {
                     ),
                     result.pr_branch,
                     repository.branch.clone(),
+                    false,  // draft = false (single task PRs don't need review)
                 )
                 .await?;
 
