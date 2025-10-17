@@ -1,5 +1,5 @@
 # AutoDev Workflow
-# This workflow executes tasks using Claude API in Docker
+# This workflow executes tasks using Claude 4.5 Sonnet API via Docker Action
 
 name: 'AutoDev'
 run-name: 'AutoDev: ${{ inputs.task_title }}'
@@ -45,121 +45,26 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout repository
+      - name: Checkout target repository
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.base_branch }}
           fetch-depth: 0
 
-      - name: Setup environment
-        run: |
-          echo "TASK_ID=${{ inputs.task_id }}" >> $GITHUB_ENV
-          echo "COMPOSITE_TASK_ID=${{ inputs.composite_task_id }}" >> $GITHUB_ENV
-          echo "TASK_TITLE=${{ inputs.task_title }}" >> $GITHUB_ENV
-          echo "TARGET_BRANCH=${{ inputs.target_branch }}" >> $GITHUB_ENV
+      - name: Checkout AutoDev Action
+        uses: actions/checkout@v4
+        with:
+          repository: load28/a-dev
+          path: .autodev-action
+          sparse-checkout: |
+            action
 
-      - name: Execute task with Claude API
-        id: execute_task
-        run: |
-          docker run --rm \
-            -v ${{ github.workspace }}:/workspace \
-            -w /workspace \
-            -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
-            -e GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} \
-            -e GITHUB_REPOSITORY=${{ github.repository }} \
-            python:3.11-slim bash -c '
-
-          # Install dependencies
-          pip install -q anthropic requests
-
-          # Create Python script for Claude API execution
-          cat > /tmp/execute_task.py << "EOFPYTHON"
-import os
-import json
-import anthropic
-import requests
-import subprocess
-from pathlib import Path
-
-def main():
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY is required")
-
-    prompt = """${{ inputs.prompt }}"""
-    task_id = "${{ inputs.task_id }}"
-
-    client = anthropic.Anthropic(api_key=api_key)
-
-    # Read repository structure
-    workspace = Path("/workspace")
-    repo_structure = []
-    for path in workspace.rglob("*"):
-        if path.is_file() and not any(part.startswith(".") for part in path.parts):
-            rel_path = path.relative_to(workspace)
-            if path.stat().st_size < 100000:  # Only include files < 100KB
-                repo_structure.append(str(rel_path))
-
-    system_prompt = f"""You are an expert software engineer working on a specific task.
-
-Repository structure:
-{chr(10).join(repo_structure[:50])}  # Limit to first 50 files
-
-Your task:
-{prompt}
-
-IMPORTANT:
-1. Make focused changes related ONLY to this specific task
-2. Do not modify files outside the scope of this task
-3. Create clear, atomic commits
-4. Write comprehensive commit messages
-5. Ensure code quality and add tests if needed
-
-Please analyze the codebase, make the necessary changes, and provide:
-1. List of files to create/modify
-2. Exact content for each file
-3. Commit message
-"""
-
-    print("Calling Claude API (claude-sonnet-4-5)...")
-    message = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=8192,
-        temperature=0.2,
-        system=system_prompt,
-        messages=[
-            {
-                "role": "user",
-                "content": f"Please complete the task: {prompt}"
-            }
-        ]
-    )
-
-    response_text = message.content[0].text
-    print(f"Claude response received ({len(response_text)} chars)")
-
-    # Save response for debugging
-    with open("/workspace/claude_response.txt", "w") as f:
-        f.write(response_text)
-
-    print("Task analysis completed by Claude API")
-    print("Note: This is a simplified workflow. Actual file modifications")
-    print("would require parsing Claude'\''s response and applying changes.")
-
-    # For now, create a simple change indicator
-    with open(f"/workspace/.autodev-task-{task_id}.txt", "w") as f:
-        f.write(f"Task {task_id} executed\\n")
-        f.write(f"Prompt: {prompt}\\n")
-        f.write(f"Response length: {len(response_text)} chars\\n")
-
-if __name__ == "__main__":
-    main()
-EOFPYTHON
-
-          python /tmp/execute_task.py
-          '
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Execute task with Claude 4.5 Sonnet
+        uses: ./.autodev-action/action
+        with:
+          task-prompt: ${{ inputs.prompt }}
+          task-id: ${{ inputs.task_id }}
+          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Commit changes
         id: commit
