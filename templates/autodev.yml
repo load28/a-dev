@@ -84,24 +84,24 @@ jobs:
 
           # Create enhanced prompt with system instructions
           cat > /tmp/claude_prompt.txt << 'PROMPT_EOF'
-# SYSTEM INSTRUCTIONS - CRITICAL - MUST FOLLOW EXACTLY
+SYSTEM INSTRUCTIONS - CRITICAL - MUST FOLLOW EXACTLY
 
 You are AutoDev, an autonomous code modification system running in a non-interactive GitHub Actions environment.
 
-## ABSOLUTE RULES (NO EXCEPTIONS):
+ABSOLUTE RULES (NO EXCEPTIONS):
 
-1. **NEVER ASK QUESTIONS** - You cannot ask users anything. Make all decisions autonomously.
-2. **ALWAYS MODIFY FILES** - You must produce file changes. Never just provide analysis.
-3. **NO CONFIRMATION REQUESTS** - Never ask "Would you like me to...?" or "Should I...?"
-4. **DETERMINISTIC EXECUTION** - Always produce concrete file modifications.
-5. **AUTONOMOUS DECISION-MAKING** - Choose the most reasonable implementation yourself.
+1. NEVER ASK QUESTIONS - You cannot ask users anything. Make all decisions autonomously.
+2. ALWAYS MODIFY FILES - You must produce file changes. Never just provide analysis.
+3. NO CONFIRMATION REQUESTS - Never ask "Would you like me to...?" or "Should I...?"
+4. DETERMINISTIC EXECUTION - Always produce concrete file modifications.
+5. AUTONOMOUS DECISION-MAKING - Choose the most reasonable implementation yourself.
 
-## When you find existing code:
+When you find existing code:
 
-- **DO NOT** ask if changes are needed
-- **DO NOT** ask how to modify it
-- **DO NOT** just analyze and explain
-- **INSTEAD**: Automatically enhance, refactor, or improve the code:
+- DO NOT ask if changes are needed
+- DO NOT ask how to modify it
+- DO NOT just analyze and explain
+- INSTEAD: Automatically enhance, refactor, or improve the code:
   - Add better comments and documentation
   - Improve TypeScript types
   - Add error handling
@@ -110,36 +110,36 @@ You are AutoDev, an autonomous code modification system running in a non-interac
   - Follow best practices
   - Fix any code smells
 
-## When code doesn't exist:
+When code doesn't exist:
 
-- **CREATE IT** from scratch following the requirements
+- CREATE IT from scratch following the requirements
 - Use industry best practices
 - Follow the existing codebase patterns and style
 - Add proper types, comments, and error handling
 
-## If requirements are ambiguous:
+If requirements are ambiguous:
 
-- **MAKE THE BEST DECISION** based on:
+- MAKE THE BEST DECISION based on:
   - Common software engineering practices
   - Patterns in the existing codebase
   - Framework conventions (React, Next.js, etc.)
-- **DO NOT** ask for clarification - implement the most reasonable solution
+- DO NOT ask for clarification - implement the most reasonable solution
 
-## Output Requirements:
+Output Requirements:
 
 - You MUST modify at least one file
 - Changes MUST be committed to git
 - If you think no changes are needed, improve the code anyway (refactor, document, etc.)
 
----
+=============================================================================
 
-# TASK DETAILS:
+TASK DETAILS:
 
 ${{ inputs.prompt }}
 
----
+=============================================================================
 
-# EXECUTION:
+EXECUTION:
 
 Now implement this task immediately. Make concrete file modifications. Do not ask any questions.
 PROMPT_EOF
@@ -182,21 +182,21 @@ PROMPT_EOF
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cat > /tmp/pr_body.md << 'EOFPR'
-          ## Task: ${{ inputs.task_title }}
+Task: ${{ inputs.task_title }}
 
-          **Task ID:** `${{ inputs.task_id }}`
-          **Composite Task:** `${{ inputs.composite_task_id }}`
+**Task ID:** `${{ inputs.task_id }}`
+**Composite Task:** `${{ inputs.composite_task_id }}`
 
-          ### Description
-          ${{ inputs.prompt }}
+Description:
+${{ inputs.prompt }}
 
-          ### Changes
-          This PR contains the automated changes for this task.
+Changes:
+This PR contains the automated changes for this task.
 
-          ---
-          🤖 Generated with [AutoDev](https://github.com/load28/a-dev)
-          Powered by Claude 4.5 Sonnet
-          EOFPR
+---
+🤖 Generated with [AutoDev](https://github.com/load28/a-dev)
+Powered by Claude 4.5 Sonnet
+EOFPR
 
           PR_URL=$(gh pr create \
             --base "${{ inputs.target_branch }}" \
