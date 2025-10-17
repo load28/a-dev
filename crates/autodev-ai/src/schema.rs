@@ -5,13 +5,21 @@ use std::collections::{HashMap, HashSet};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "PascalCase")]
 pub enum TaskDomain {
+    #[serde(alias = "translation")]
     Translation,
+    #[serde(alias = "security")]
     Security,
+    #[serde(alias = "refactoring")]
     Refactoring,
+    #[serde(alias = "testing")]
     Testing,
+    #[serde(alias = "documentation")]
     Documentation,
+    #[serde(alias = "feature")]
     Feature,
+    #[serde(alias = "bugfix")]
     Bugfix,
+    #[serde(alias = "generic")]
     Generic,
 }
 
