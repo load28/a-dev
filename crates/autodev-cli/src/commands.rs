@@ -292,7 +292,7 @@ async fn execute_task(
     repository: &Repository,
     engine: &Arc<AutoDevEngine>,
     github_client: &Arc<GitHubClient>,
-    ai_agent: &Arc<dyn AIAgent>,
+    _ai_agent: &Arc<dyn AIAgent>,
     db: &Option<Arc<Database>>,
 ) -> Result<()> {
     println!("\n{}", "=".repeat(60));
@@ -302,54 +302,50 @@ async fn execute_task(
     // Update status
     engine.update_task_status(&task.id, TaskStatus::InProgress, None).await?;
 
-    // Execute with AI agent
-    let result = ai_agent
-        .execute_task(task, &format!("/workspace/{}", repository.full_name()))
-        .await?;
-
-    if !result.success {
-        anyhow::bail!("AI agent execution failed");
-    }
-
-    println!("✓ AI agent completed");
-    println!("  Files changed: {:?}", result.files_changed);
-    println!("  Branch: {}", result.pr_branch);
-
-    // Trigger GitHub workflow
+    // Trigger GitHub workflow (Claude Code will run in GitHub Actions)
     let mut workflow_inputs = std::collections::HashMap::new();
-    workflow_inputs.insert("task_id".to_string(), task.id.clone());
-    workflow_inputs.insert("branch".to_string(), result.pr_branch.clone());
-    workflow_inputs.insert("commit_message".to_string(), result.commit_message.clone());
+    workflow_inputs.insert("prompt".to_string(), task.prompt.clone());
+    workflow_inputs.insert("task_title".to_string(), task.title.clone());
+    workflow_inputs.insert("base_branch".to_string(), "main".to_string()); // TODO: Make configurable
+
+    println!("Triggering GitHub Actions workflow...");
+    println!("  Prompt: {}", task.prompt);
+    println!("  Repository: {}", repository.full_name());
 
     let run_id = github_client
         .trigger_workflow(repository, "autodev.yml", workflow_inputs)
         .await?;
 
     println!("✓ Workflow triggered: {}", run_id);
+    println!();
+    println!("🤖 Claude Code is now running in GitHub Actions.");
+    println!("   Check progress at: https://github.com/{}/actions", repository.full_name());
+    println!();
+    println!("💡 The workflow will:");
+    println!("   1. Checkout the repository");
+    println!("   2. Run Claude Code CLI with your prompt");
+    println!("   3. Automatically commit changes");
+    println!("   4. Create a pull request");
+    println!();
 
-    // Wait for workflow completion
-    println!("Waiting for workflow completion...");
-    tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    // Update status (workflow is now responsible for the rest)
+    engine.update_task_status(&task.id, TaskStatus::InProgress, None).await?;
 
-    // Update status
-    engine.update_task_status(&task.id, TaskStatus::Completed, None).await?;
-
-    // Save metrics
+    // Save execution log
     if let Some(db) = db {
-        db.save_metrics(
+        db.add_execution_log(
             &task.id,
-            2000, // Example execution time
-            result.files_changed.len() as i32,
-            100, // Example lines added
-            20,  // Example lines removed
-            500, // Example tokens used
+            "WORKFLOW_TRIGGERED",
+            &format!("GitHub Actions workflow triggered: {}", run_id),
         ).await?;
-
-        db.add_execution_log(&task.id, "COMPLETED", "Task execution completed successfully").await?;
     }
 
-    println!("✓ Task completed successfully");
-    println!("  PR: https://github.com/{}/pull/123", repository.full_name());
+    println!("✓ Task dispatched to GitHub Actions");
+    println!("  Task ID: {}", task.id);
+    println!("  Workflow Run: {}", run_id);
+    println!();
+    println!("⏳ Note: The task will complete asynchronously in GitHub Actions.");
+    println!("   You can close this terminal - the workflow will continue running.");
 
     Ok(())
 }

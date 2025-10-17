@@ -52,11 +52,11 @@ Complete guide to set up AutoDev for your repository.
 ```bash
 # In your repository root
 mkdir -p .github/workflows
-cp /path/to/auto-dev/templates/workflow-template.yml .github/workflows/autodev.yml
+cp /path/to/auto-dev/templates/autodev.yml .github/workflows/
 
 # Or download directly
 curl -o .github/workflows/autodev.yml \
-  https://raw.githubusercontent.com/load28/auto-dev/main/templates/workflow-template.yml
+  https://raw.githubusercontent.com/load28/auto-dev/main/templates/autodev.yml
 ```
 
 ### Option B: Create Manually

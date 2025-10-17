@@ -205,22 +205,45 @@ curl http://localhost:3000/tasks/{task_id}
 curl http://localhost:3000/tasks
 ```
 
-## 🔧 GitHub Actions 설정
+## 🔧 대상 저장소에 AutoDev 설정
 
-### 1. GitHub App 설치
+AutoDev를 사용하려는 저장소에 다음 설정을 추가하세요.
 
-저장소에 AutoDev GitHub App을 설치하거나, Personal Access Token을 사용합니다.
+### 1. Workflow 파일 복사
 
-### 2. Secrets 설정
+```bash
+# 대상 저장소에서
+mkdir -p .github/workflows
+cp /path/to/auto-dev/templates/autodev.yml .github/workflows/
 
-GitHub 저장소 Settings → Secrets에 다음을 추가:
+# 또는 직접 다운로드
+curl -o .github/workflows/autodev.yml \
+  https://raw.githubusercontent.com/load28/auto-dev/main/templates/autodev.yml
+```
 
-- `ANTHROPIC_API_KEY`: Claude API 키
-- `GITHUB_TOKEN`: GitHub 토큰 (자동 제공됨)
+### 2. GitHub Secrets 설정
 
-### 3. Workflow 파일 추가
+대상 저장소의 Settings → Secrets and variables → Actions에서:
 
-`.github/workflows/autodev.yml` 파일이 자동으로 생성됩니다.
+- **ANTHROPIC_API_KEY**: Claude API 키 추가
+- **GITHUB_TOKEN**: 자동 제공됨 (추가 불필요)
+
+### 3. 테스트
+
+```bash
+# Issue에 댓글로 테스트 (Webhook 설정 완료 시)
+autodev: add a simple README file
+
+# 또는 CLI로 테스트
+./target/release/autodev task \
+  --owner your-org \
+  --repo your-repo \
+  --title "Test AutoDev" \
+  --prompt "Add README file" \
+  --execute
+```
+
+상세한 설정 가이드는 [docs/SETUP.md](docs/SETUP.md)를 참조하세요.
 
 ## 📊 기능 상세
 

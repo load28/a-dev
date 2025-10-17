@@ -78,6 +78,18 @@ pub async fn handle_github_webhook(
                         handle_workflow_completion(state, workflow_run, repository).await;
                     }
                 }
+                WebhookEvent::IssueCommentCreated { comment, issue, repository } => {
+                    tracing::info!(
+                        "Issue comment created: #{} - {}",
+                        issue.number,
+                        comment.body.chars().take(50).collect::<String>()
+                    );
+
+                    // Check if comment starts with "autodev:"
+                    if comment.body.trim().starts_with("autodev:") {
+                        handle_issue_comment(state, comment, issue, repository).await;
+                    }
+                }
                 _ => {
                     tracing::debug!("Unhandled webhook event type");
                 }
@@ -230,5 +242,109 @@ fn extract_task_id(workflow_name: &str) -> Option<String> {
         Some(workflow_name.replace("AutoDev - Task ", ""))
     } else {
         None
+    }
+}
+
+async fn handle_issue_comment(
+    state: ApiState,
+    comment: autodev_github::webhook::CommentPayload,
+    issue: autodev_github::webhook::IssuePayload,
+    repo: autodev_github::webhook::RepositoryPayload,
+) {
+    tracing::info!("Handling issue comment with autodev command: #{}", issue.number);
+
+    // Parse "autodev:" prompt
+    let prompt = match comment.body.trim().strip_prefix("autodev:") {
+        Some(p) => p.trim(),
+        None => {
+            tracing::warn!("Comment does not start with 'autodev:' prefix");
+            return;
+        }
+    };
+
+    if prompt.is_empty() {
+        tracing::warn!("Empty prompt after 'autodev:' prefix");
+
+        // Send error comment to issue
+        let github_repo = autodev_github::Repository::new(
+            repo.owner.login.clone(),
+            repo.name.clone(),
+        );
+
+        let error_msg = "❌ AutoDev 오류: 프롬프트가 비어있습니다.\n\n사용 예시:\n```\nautodev: Add Google OAuth authentication\n```";
+
+        if let Err(e) = state.github_client
+            .create_issue_comment(&github_repo, issue.number, error_msg)
+            .await
+        {
+            tracing::error!("Failed to post error comment: {}", e);
+        }
+
+        return;
+    }
+
+    tracing::info!("Parsed prompt: {}", prompt);
+
+    let github_repo = autodev_github::Repository::new(
+        repo.owner.login.clone(),
+        repo.name.clone(),
+    );
+
+    // Post acknowledgment comment
+    let ack_msg = format!(
+        "🤖 AutoDev 작업이 시작되었습니다.\n\n**작업 내용:** {}\n\n워크플로우 실행 상태는 [Actions 탭](https://github.com/{}/actions)에서 확인하실 수 있습니다.",
+        prompt,
+        repo.full_name
+    );
+
+    if let Err(e) = state.github_client
+        .create_issue_comment(&github_repo, issue.number, &ack_msg)
+        .await
+    {
+        tracing::error!("Failed to post acknowledgment comment: {}", e);
+    }
+
+    // Trigger workflow via GitHub Actions
+    let mut inputs = std::collections::HashMap::new();
+    inputs.insert("prompt".to_string(), prompt.to_string());
+    inputs.insert("task_title".to_string(), format!("AutoDev: {}", prompt));
+    inputs.insert("base_branch".to_string(), "main".to_string()); // TODO: Make configurable
+
+    match state.github_client
+        .trigger_workflow(&github_repo, "autodev.yml", inputs)
+        .await
+    {
+        Ok(workflow_run_id) => {
+            tracing::info!("Workflow triggered successfully: {}", workflow_run_id);
+
+            // Optionally: Store task in database if available
+            if let Some(ref db) = state.db {
+                let task = autodev_core::Task::new(
+                    format!("AutoDev: {}", prompt),
+                    format!("Triggered from Issue #{}", issue.number),
+                    prompt.to_string(),
+                );
+
+                if let Err(e) = db.save_task(&task, &repo.owner.login, &repo.name).await {
+                    tracing::error!("Failed to store task in database: {}", e);
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to trigger workflow: {}", e);
+
+            // Post error comment
+            let error_msg = format!(
+                "❌ AutoDev 워크플로우 트리거 실패\n\n**오류:** {}\n\n다음을 확인해주세요:\n\n- `.github/workflows/autodev.yml` 파일이 존재하는지\n- `ANTHROPIC_API_KEY` secret이 설정되어 있는지\n- GitHub Actions가 활성화되어 있는지",
+                e
+            );
+
+            if let Err(e) = state.github_client
+                .create_issue_comment(&github_repo, issue.number, &error_msg)
+                .await
+            {
+                tracing::error!("Failed to post error comment: {}", e);
+            }
+        }
     }
 }

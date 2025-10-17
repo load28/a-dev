@@ -123,6 +123,26 @@ impl GitHubClient {
         Ok(())
     }
 
+    /// Add comment to Issue
+    ///
+    /// GitHub API에서 PR과 Issue는 동일한 엔드포인트를 사용하지만
+    /// 명확성을 위해 별도 메서드 제공
+    pub async fn create_issue_comment(
+        &self,
+        repo: &Repository,
+        issue_number: u32,
+        comment: &str,
+    ) -> Result<()> {
+        tracing::info!("Adding comment to Issue #{}", issue_number);
+
+        self.client
+            .issues(&repo.owner, &repo.name)
+            .create_comment(issue_number as u64, comment)
+            .await?;
+
+        Ok(())
+    }
+
     /// Get pull request
     pub async fn get_pull_request(
         &self,
