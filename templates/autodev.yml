@@ -51,19 +51,130 @@ jobs:
           ref: ${{ inputs.base_branch }}
           fetch-depth: 0
 
-      - name: Checkout AutoDev Action
-        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          repository: load28/a-dev
-          path: .autodev-action
-          sparse-checkout: action
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install anthropic
 
       - name: Execute task with Claude 4.5 Sonnet
-        uses: ./.autodev-action/action
-        with:
-          task_prompt: ${{ inputs.prompt }}
-          task_id: ${{ inputs.task_id }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TASK_PROMPT: ${{ inputs.prompt }}
+          TASK_ID: ${{ inputs.task_id }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+        run: |
+          python << 'EOFPYTHON'
+          import os
+          import sys
+          from pathlib import Path
+
+          try:
+              import anthropic
+          except ImportError:
+              print("ERROR: anthropic package not installed", file=sys.stderr)
+              sys.exit(1)
+
+          def get_repository_structure(workspace_path, max_files=50):
+              repo_structure = []
+              workspace = Path(workspace_path)
+
+              if not workspace.exists():
+                  return []
+
+              for path in workspace.rglob("*"):
+                  if path.is_file() and not any(part.startswith(".") for part in path.parts):
+                      try:
+                          rel_path = path.relative_to(workspace)
+                          if path.stat().st_size < 100000:
+                              repo_structure.append(str(rel_path))
+                      except:
+                          continue
+
+              return repo_structure[:max_files]
+
+          def main():
+              print("=" * 60)
+              print("AutoDev Task Executor (Claude 4.5 Sonnet)")
+              print("=" * 60)
+
+              api_key = os.environ.get("ANTHROPIC_API_KEY")
+              task_prompt = os.environ.get("TASK_PROMPT", "")
+              task_id = os.environ.get("TASK_ID", "unknown")
+              workspace = os.environ.get("GITHUB_WORKSPACE", ".")
+
+              if not api_key:
+                  print("ERROR: ANTHROPIC_API_KEY required", file=sys.stderr)
+                  sys.exit(1)
+
+              if not task_prompt:
+                  print("ERROR: TASK_PROMPT required", file=sys.stderr)
+                  sys.exit(1)
+
+              print(f"Task ID: {task_id}")
+              print(f"Workspace: {workspace}")
+              print()
+
+              print("Analyzing repository...")
+              repo_structure = get_repository_structure(workspace)
+              print(f"Found {len(repo_structure)} files")
+              print()
+
+              files_list = "\n".join(repo_structure) if repo_structure else "(No files)"
+              system_prompt = f"""You are an expert software engineer.
+
+          Repository structure:
+          {files_list}
+
+          Task: {task_prompt}
+
+          IMPORTANT:
+          1. Make focused changes for this specific task only
+          2. Do not modify unrelated files
+          3. Write clear commit messages
+          4. Ensure code quality
+
+          Provide:
+          1. Files to create/modify
+          2. Exact file contents
+          3. Commit message
+          """
+
+              print("Calling Claude API...")
+              client = anthropic.Anthropic(api_key=api_key)
+
+              try:
+                  message = client.messages.create(
+                      model="claude-sonnet-4-5-20250929",
+                      max_tokens=8192,
+                      temperature=0.2,
+                      system=system_prompt,
+                      messages=[{"role": "user", "content": f"Complete: {task_prompt}"}]
+                  )
+
+                  response_text = message.content[0].text
+                  print(f"✓ Response received ({len(response_text)} chars)")
+
+                  with open(os.path.join(workspace, "claude_response.txt"), "w") as f:
+                      f.write(response_text)
+
+                  with open(os.path.join(workspace, f".autodev-task-{task_id}.txt"), "w") as f:
+                      f.write(f"Task {task_id} executed\n")
+                      f.write(f"Prompt: {task_prompt}\n")
+                      f.write(f"Response: {len(response_text)} chars\n")
+
+                  print("✓ Task completed")
+                  return 0
+
+              except Exception as e:
+                  print(f"ERROR: {e}", file=sys.stderr)
+                  return 1
+
+          if __name__ == "__main__":
+              sys.exit(main())
+          EOFPYTHON
 
       - name: Commit changes
         id: commit
