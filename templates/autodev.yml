@@ -56,8 +56,7 @@ jobs:
         with:
           repository: load28/a-dev
           path: .autodev-action
-          sparse-checkout: |
-            action
+          sparse-checkout: action
 
       - name: Execute task with Claude 4.5 Sonnet
         uses: ./.autodev-action/action
@@ -71,24 +70,20 @@ jobs:
         run: |
           git config user.name "AutoDev Bot"
           git config user.email "autodev@github-actions.bot"
-
           git add -A
-
           if git diff --staged --quiet; then
             echo "No changes to commit"
             echo "has_changes=false" >> $GITHUB_OUTPUT
           else
-            COMMIT_MSG="AutoDev: ${{ inputs.task_title }}
+            git commit -m "AutoDev: ${{ inputs.task_title }}
 
-Task ID: ${{ inputs.task_id }}
-Composite Task: ${{ inputs.composite_task_id }}
+          Task ID: ${{ inputs.task_id }}
+          Composite Task: ${{ inputs.composite_task_id }}
 
-${{ inputs.prompt }}
+          ${{ inputs.prompt }}
 
-Generated with AutoDev
-Co-Authored-By: Claude <noreply@anthropic.com>"
-
-            git commit -m "$COMMIT_MSG"
+          Generated with AutoDev
+          Co-Authored-By: Claude <noreply@anthropic.com>"
             git push origin ${{ inputs.base_branch }}
             echo "has_changes=true" >> $GITHUB_OUTPUT
           fi
@@ -96,27 +91,31 @@ Co-Authored-By: Claude <noreply@anthropic.com>"
       - name: Create Pull Request
         if: steps.commit.outputs.has_changes == 'true'
         id: create_pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_BODY="## Task: ${{ inputs.task_title }}
+          cat > /tmp/pr_body.md << 'EOFPR'
+          ## Task: ${{ inputs.task_title }}
 
-**Task ID:** \`${{ inputs.task_id }}\`
-**Composite Task:** \`${{ inputs.composite_task_id }}\`
+          **Task ID:** `${{ inputs.task_id }}`
+          **Composite Task:** `${{ inputs.composite_task_id }}`
 
-### Description
-${{ inputs.prompt }}
+          ### Description
+          ${{ inputs.prompt }}
 
-### Changes
-This PR contains the automated changes for this task.
+          ### Changes
+          This PR contains the automated changes for this task.
 
----
-🤖 Generated with [AutoDev](https://github.com/load28/a-dev)
-Powered by Claude 4.5 Sonnet"
+          ---
+          🤖 Generated with [AutoDev](https://github.com/load28/a-dev)
+          Powered by Claude 4.5 Sonnet
+          EOFPR
 
           PR_JSON=$(gh pr create \
             --base "${{ inputs.target_branch }}" \
             --head "${{ inputs.base_branch }}" \
             --title "AutoDev: ${{ inputs.task_title }}" \
-            --body "$PR_BODY" \
+            --body-file /tmp/pr_body.md \
             --json number,url)
 
           echo "PR created: $PR_JSON"
@@ -126,8 +125,6 @@ Powered by Claude 4.5 Sonnet"
 
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify AutoDev Server
         if: always()
@@ -164,7 +161,7 @@ Powered by Claude 4.5 Sonnet"
             "success": $SUCCESS,
             "error": $([ -z "$ERROR_MSG" ] && echo "null" || echo "\"$ERROR_MSG\"")
           }
-EOF
+          EOF
           )
 
           echo "Notifying AutoDev server..."
@@ -173,5 +170,3 @@ EOF
             -d "$PAYLOAD" \
             "${{ inputs.autodev_server_url }}/callbacks/workflow-complete" \
             || echo "Failed to notify server (non-fatal)"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
