@@ -1,0 +1,218 @@
+use crate::{Repository, Result, WorkflowDispatch};
+use octocrab::Octocrab;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+
+#[derive(Clone)]
+pub struct GitHubClient {
+    client: Octocrab,
+    token: String,
+}
+
+impl GitHubClient {
+    pub fn new(token: String) -> Result<Self> {
+        let client = Octocrab::builder()
+            .personal_token(token.clone())
+            .build()?;
+
+        Ok(Self { client, token })
+    }
+
+    /// Trigger a GitHub Actions workflow
+    pub async fn trigger_workflow(
+        &self,
+        repo: &Repository,
+        workflow_file: &str,
+        inputs: HashMap<String, String>,
+    ) -> Result<String> {
+        tracing::info!(
+            "Triggering workflow {} for {}/{}",
+            workflow_file,
+            repo.owner,
+            repo.name
+        );
+
+        let dispatch = WorkflowDispatch {
+            ref_: repo.branch.clone(),
+            inputs,
+        };
+
+        // Using octocrab for workflow dispatch
+        let response = self
+            .client
+            .workflows(&repo.owner, &repo.name)
+            .dispatch(workflow_file, dispatch.ref_, dispatch.inputs)
+            .await?;
+
+        // Generate a workflow run ID
+        let workflow_run_id = format!("run_{}", chrono::Utc::now().format("%Y%m%d_%H%M%S"));
+
+        tracing::info!("Workflow triggered: {}", workflow_run_id);
+
+        Ok(workflow_run_id)
+    }
+
+    /// Check workflow status
+    pub async fn check_workflow_status(
+        &self,
+        repo: &Repository,
+        run_id: &str,
+    ) -> Result<WorkflowStatus> {
+        // Get workflow run status
+        let runs = self
+            .client
+            .workflows(&repo.owner, &repo.name)
+            .list_runs(run_id)
+            .send()
+            .await?;
+
+        if let Some(run) = runs.workflow_runs.first() {
+            Ok(WorkflowStatus {
+                status: run.status.to_string(),
+                conclusion: run.conclusion.as_ref().map(|c| c.to_string()),
+            })
+        } else {
+            Ok(WorkflowStatus {
+                status: "unknown".to_string(),
+                conclusion: None,
+            })
+        }
+    }
+
+    /// Create a pull request
+    pub async fn create_pull_request(
+        &self,
+        repo: &Repository,
+        title: String,
+        body: String,
+        head: String,
+        base: String,
+    ) -> Result<PullRequest> {
+        tracing::info!("Creating PR: {} ({} -> {})", title, head, base);
+
+        let pr = self
+            .client
+            .pulls(&repo.owner, &repo.name)
+            .create(title, head, base)
+            .body(body)
+            .draft(false)
+            .send()
+            .await?;
+
+        Ok(PullRequest {
+            number: pr.number,
+            url: pr.html_url.map(|u| u.to_string()),
+            title: pr.title.unwrap_or_default(),
+        })
+    }
+
+    /// Add comment to PR
+    pub async fn create_pr_comment(
+        &self,
+        repo: &Repository,
+        pr_number: u32,
+        comment: &str,
+    ) -> Result<()> {
+        tracing::info!("Adding comment to PR #{}", pr_number);
+
+        self.client
+            .issues(&repo.owner, &repo.name)
+            .create_comment(pr_number as u64, comment)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Get pull request
+    pub async fn get_pull_request(
+        &self,
+        repo: &Repository,
+        pr_number: u32,
+    ) -> Result<PullRequest> {
+        let pr = self
+            .client
+            .pulls(&repo.owner, &repo.name)
+            .get(pr_number as u64)
+            .await?;
+
+        Ok(PullRequest {
+            number: pr.number,
+            url: pr.html_url.map(|u| u.to_string()),
+            title: pr.title.unwrap_or_default(),
+        })
+    }
+
+    /// List repository workflows
+    pub async fn list_workflows(&self, repo: &Repository) -> Result<Vec<String>> {
+        let workflows = self
+            .client
+            .workflows(&repo.owner, &repo.name)
+            .list()
+            .send()
+            .await?;
+
+        Ok(workflows
+            .workflows
+            .iter()
+            .map(|w| w.name.clone())
+            .collect())
+    }
+
+    /// Create a branch
+    pub async fn create_branch(
+        &self,
+        repo: &Repository,
+        branch_name: &str,
+        from_branch: &str,
+    ) -> Result<()> {
+        tracing::info!(
+            "Creating branch {} from {} in {}/{}",
+            branch_name,
+            from_branch,
+            repo.owner,
+            repo.name
+        );
+
+        // Get the ref of the source branch
+        let source_ref = self
+            .client
+            .repos(&repo.owner, &repo.name)
+            .get_ref(&format!("heads/{}", from_branch))
+            .await?;
+
+        // Create new branch
+        self.client
+            .repos(&repo.owner, &repo.name)
+            .create_ref(
+                &format!("refs/heads/{}", branch_name),
+                source_ref.object.sha,
+            )
+            .await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowStatus {
+    pub status: String,
+    pub conclusion: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PullRequest {
+    pub number: u64,
+    pub url: Option<String>,
+    pub title: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_client_creation() {
+        let result = GitHubClient::new("test_token".to_string());
+        assert!(result.is_ok());
+    }
+}

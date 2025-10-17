@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: autodev
+      POSTGRES_USER: autodev
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U autodev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  autodev:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://autodev:password@postgres:5432/autodev
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      RUST_LOG: info,autodev=debug
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config.toml:/app/config.toml
+    command: serve --port 3000
+
+volumes:
+  postgres_data:

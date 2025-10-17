@@ -1,0 +1,86 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/autodev-core",
+    "crates/autodev-github",
+    "crates/autodev-ai",
+    "crates/autodev-db",
+    "crates/autodev-api",
+    "crates/autodev-cli",
+    "crates/autodev-worker",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["AutoDev Team"]
+license = "MIT"
+repository = "https://github.com/yourusername/auto-dev"
+homepage = "https://autodev.io"
+documentation = "https://docs.autodev.io"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Date/Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# HTTP
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+axum = { version = "0.7", features = ["macros"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+
+# Database
+sqlx = { version = "0.7", features = [
+    "runtime-tokio-rustls",
+    "postgres",
+    "chrono",
+    "uuid",
+    "migrate"
+]}
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env", "color"] }
+
+# Graph algorithms
+petgraph = "0.6"
+
+# Configuration
+config = "0.13"
+dotenv = "0.15"
+
+# Internal crates
+autodev-core = { path = "crates/autodev-core" }
+autodev-github = { path = "crates/autodev-github" }
+autodev-ai = { path = "crates/autodev-ai" }
+autodev-db = { path = "crates/autodev-db" }
+
+[profile.dev]
+opt-level = 0
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.bench]
+inherits = "release"

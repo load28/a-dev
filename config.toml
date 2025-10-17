@@ -1,0 +1,43 @@
+# AutoDev Application Configuration
+
+[github]
+api_url = "https://api.github.com"
+workflow_file = "autodev.yml"
+
+[ai_agent]
+# claude-code, codex, gemini, etc.
+default_type = "claude-code"
+timeout_seconds = 300
+max_retries = 3
+
+[tasks]
+# Default timeout (seconds)
+default_timeout = 3600
+# Maximum parallel tasks
+max_parallel_tasks = 5
+# Auto retry count
+auto_retry_count = 2
+
+[database]
+# Connection pool size
+pool_size = 5
+# Connection timeout (seconds)
+connection_timeout = 30
+
+[api]
+port = 3000
+host = "0.0.0.0"
+# CORS settings
+cors_origins = ["http://localhost:3000", "https://app.autodev.io"]
+
+[logging]
+level = "info"
+format = "json"
+# Log file path (optional)
+file_path = "/var/log/autodev/app.log"
+
+[metrics]
+# Enable metrics collection
+enabled = true
+# Metrics export interval (seconds)
+export_interval = 60

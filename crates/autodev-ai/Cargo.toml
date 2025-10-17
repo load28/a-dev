@@ -1,0 +1,27 @@
+[package]
+name = "autodev-ai"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+# Workspace dependencies
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+
+# AI SDKs
+async-openai = "0.19"
+
+# Internal
+autodev-core = { workspace = true }
+
+[dev-dependencies]
+mockito = "1.2"
+tokio-test = "0.4"
