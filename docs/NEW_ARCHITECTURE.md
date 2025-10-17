@@ -168,12 +168,13 @@ AutoDev 서버의 `TaskDecomposer`가 AI를 사용하여 작업을 지능적으�
 }
 ```
 
-### 3. 새로운 워크플로우 템플릿
+### 3. 통합 워크플로우 템플릿
 
-`templates/autodev-subtask.yml`은 Claude API를 사용하여 Docker 환경에서 작업을 수행합니다:
+`templates/autodev.yml`은 Claude API를 사용하여 Docker 환경에서 작업을 수행합니다:
 
-- **독립 실행**: 각 하위 작업이 독립적으로 실행
+- **단일 워크플로우**: CLI와 API 모두 같은 워크플로우 사용
 - **Claude 4.5 Sonnet 사용**: claude-sonnet-4-5-20250929 모델 사용 (코딩 및 에이전트 작업 최적화)
+- **Docker 격리 실행**: Python + Claude API를 Docker 컨테이너에서 안전하게 실행
 - **자동 콜백**: 작업 완료 시 AutoDev 서버에 자동 알림
 - **PR 자동 생성**: 작업 완료 시 자동으로 PR 생성
 
@@ -220,11 +221,13 @@ cargo run --bin autodev-api
 ```bash
 # 대상 저장소에서
 mkdir -p .github/workflows
-cp /path/to/a-dev/templates/autodev-subtask.yml .github/workflows/
+cp /path/to/a-dev/templates/autodev.yml .github/workflows/
 ```
 
 GitHub Secrets 설정:
 - `ANTHROPIC_API_KEY`: Claude API 키
+
+**주의**: 이제 `autodev.yml` 하나만 있으면 됩니다. `autodev-subtask.yml`은 더 이상 사용하지 않습니다.
 
 ### 4. 작업 생성 및 실행
 

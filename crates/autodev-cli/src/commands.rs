@@ -302,15 +302,26 @@ async fn execute_task(
     // Update status
     engine.update_task_status(&task.id, TaskStatus::InProgress, None).await?;
 
-    // Trigger GitHub workflow (Claude Code will run in GitHub Actions)
+    // Create branch for this task
+    let task_branch = format!("autodev/{}", task.id);
+    if let Err(e) = github_client.create_branch(repository, &task_branch, "main").await {
+        tracing::warn!("Failed to create branch (may already exist): {}", e);
+    }
+
+    // Trigger GitHub workflow with new architecture inputs
     let mut workflow_inputs = std::collections::HashMap::new();
-    workflow_inputs.insert("prompt".to_string(), task.prompt.clone());
+    workflow_inputs.insert("task_id".to_string(), task.id.clone());
+    workflow_inputs.insert("composite_task_id".to_string(), "standalone".to_string());
     workflow_inputs.insert("task_title".to_string(), task.title.clone());
-    workflow_inputs.insert("base_branch".to_string(), "main".to_string()); // TODO: Make configurable
+    workflow_inputs.insert("prompt".to_string(), task.prompt.clone());
+    workflow_inputs.insert("base_branch".to_string(), task_branch.clone());
+    workflow_inputs.insert("target_branch".to_string(), "main".to_string());
 
     println!("Triggering GitHub Actions workflow...");
+    println!("  Task ID: {}", task.id);
     println!("  Prompt: {}", task.prompt);
     println!("  Repository: {}", repository.full_name());
+    println!("  Branch: {}", task_branch);
 
     let run_id = github_client
         .trigger_workflow(repository, "autodev.yml", workflow_inputs)
@@ -318,14 +329,15 @@ async fn execute_task(
 
     println!("✓ Workflow triggered: {}", run_id);
     println!();
-    println!("🤖 Claude Code is now running in GitHub Actions.");
+    println!("🤖 Claude 4.5 Sonnet is now running in GitHub Actions (Docker + API).");
     println!("   Check progress at: https://github.com/{}/actions", repository.full_name());
     println!();
     println!("💡 The workflow will:");
-    println!("   1. Checkout the repository");
-    println!("   2. Run Claude Code CLI with your prompt");
+    println!("   1. Checkout the repository on branch: {}", task_branch);
+    println!("   2. Run Claude API in Docker container");
     println!("   3. Automatically commit changes");
-    println!("   4. Create a pull request");
+    println!("   4. Create a pull request to main");
+    println!("   5. Notify AutoDev server on completion");
     println!();
 
     // Update status (workflow is now responsible for the rest)

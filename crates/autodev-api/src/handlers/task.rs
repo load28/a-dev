@@ -373,7 +373,7 @@ pub async fn orchestrate_task(
 
         match state
             .github_client
-            .trigger_workflow(&repo, "autodev-subtask.yml", inputs)
+            .trigger_workflow(&repo, "autodev.yml", inputs)
             .await
         {
             Ok(workflow_run_id) => {
