@@ -11,7 +11,7 @@ pub struct TaskDecomposer {
 impl TaskDecomposer {
     pub fn new(agent: Arc<dyn AIAgent>) -> Self {
         let system_prompt = include_str!("../prompts/task_decomposition_system.txt").to_string();
-        let example_db = ExampleDatabase::new();
+        let example_db = ExampleDatabase::with_agent(agent.clone());
 
         Self {
             agent,
@@ -24,12 +24,12 @@ impl TaskDecomposer {
     pub async fn decompose(&self, composite_prompt: &str) -> Result<Vec<Task>> {
         tracing::info!("AI-based task decomposition started");
 
-        // 1. 도메인 감지
-        let detected_domain = self.example_db.detect_domain(composite_prompt);
+        // 1. AI 기반 도메인 감지 (한글/영어 모두 지원, 의미론적 분류)
+        let detected_domain = self.example_db.detect_domain(composite_prompt).await;
         tracing::debug!("Detected domain: {:?}", detected_domain);
 
-        // 2. 관련 예제 검색 (Few-shot learning)
-        let relevant_examples = self.example_db.find_relevant_examples(composite_prompt, 2);
+        // 2. AI 기반 예제 선택 (의미론적 유사도, 한글/영어 모두 지원)
+        let relevant_examples = self.example_db.find_relevant_examples(composite_prompt, 2).await;
 
         // 3. Few-shot 프롬프트 구성
         let few_shot_prompt = self.build_few_shot_prompt(&relevant_examples);

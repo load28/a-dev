@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 /// 작업 도메인 타입
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "PascalCase")]
 pub enum TaskDomain {
     Translation,
     Security,
@@ -13,6 +13,32 @@ pub enum TaskDomain {
     Feature,
     Bugfix,
     Generic,
+}
+
+/// AI 도메인 감지 응답
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DomainDetectionResponse {
+    /// 감지된 도메인
+    pub domain: TaskDomain,
+
+    /// 신뢰도 (0.0 ~ 1.0)
+    pub confidence: f64,
+
+    /// 분류 근거 설명
+    pub reasoning: String,
+}
+
+/// AI 예제 선택 응답
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExampleRankingResponse {
+    /// 선택된 예제 인덱스 (점수 높은 순)
+    pub selected_indices: Vec<usize>,
+
+    /// 각 선택된 예제의 유사도 점수 (0.0 ~ 1.0)
+    pub scores: Vec<f64>,
+
+    /// 각 선택 근거 설명
+    pub reasoning: Vec<String>,
 }
 
 /// 복잡도 추정

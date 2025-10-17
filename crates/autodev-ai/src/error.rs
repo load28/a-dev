@@ -26,6 +26,9 @@ pub enum Error {
     #[error("Validation error: {0}")]
     ValidationError(String),
 
+    #[error("Configuration error: {0}")]
+    ConfigError(String),
+
     #[error("Request error: {0}")]
     Request(#[from] reqwest::Error),
 
