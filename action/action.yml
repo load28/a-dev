@@ -3,13 +3,13 @@ description: 'Execute coding tasks using Claude 4.5 Sonnet API'
 author: 'load28'
 
 inputs:
-  task-prompt:
+  task_prompt:
     description: 'Task description/prompt for the coding task'
     required: true
-  task-id:
+  task_id:
     description: 'Unique task identifier'
     required: true
-  anthropic-api-key:
+  anthropic_api_key:
     description: 'Anthropic API key for Claude API access'
     required: true
 

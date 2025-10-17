@@ -7,26 +7,26 @@ GitHub Docker Action for executing coding tasks using Claude 4.5 Sonnet API.
 ```yaml
 - uses: load28/a-dev/action@main
   with:
-    task-prompt: "Add user authentication with OAuth"
-    task-id: "task-123"
-    anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+    task_prompt: "Add user authentication with OAuth"
+    task_id: "task-123"
+    anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 ```
 
 ## Inputs
 
-### `task-prompt` (required)
+### `task_prompt` (required)
 
 The task description/prompt for Claude to execute.
 
 **Example**: `"Implement Google OAuth login system with client-side authentication"`
 
-### `task-id` (required)
+### `task_id` (required)
 
 Unique identifier for the task.
 
 **Example**: `"511e1652-19f3-4f6c-a3d2-7db96b2f7af8"`
 
-### `anthropic-api-key` (required)
+### `anthropic_api_key` (required)
 
 Anthropic API key for Claude API access. Store this as a repository secret.
 
@@ -71,9 +71,9 @@ jobs:
       # Execute task with Claude
       - uses: ./.autodev-action/action
         with:
-          task-prompt: ${{ inputs.prompt }}
-          task-id: ${{ inputs.task_id }}
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          task_prompt: ${{ inputs.prompt }}
+          task_id: ${{ inputs.task_id }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
       - name: Commit changes
         run: |
