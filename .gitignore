@@ -15,4 +15,7 @@ target/
 
 # Added by cargo
 **/mutants.out*/
+
+# Environment variables
 .env*
+!.env.example
