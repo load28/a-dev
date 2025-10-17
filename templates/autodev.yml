@@ -144,6 +144,10 @@ jobs:
           Now implement this task immediately. Make concrete file modifications. Do not ask any questions.
           PROMPT_EOF
 
+          # Remove leading indentation (10 spaces) from prompt
+          # This is needed because YAML requires indentation but Claude Code should receive clean text
+          sed -i 's/^          //' /tmp/claude_prompt.txt
+
           # Execute Claude Code with enhanced prompt
           claude \
             --dangerously-skip-permissions \
