@@ -3,7 +3,7 @@ use crate::{
     Result,
 };
 use autodev_core::{CompositeTask, Task, TaskStatus};
-use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres, Row};
 
 #[derive(Clone)]
 pub struct Database {

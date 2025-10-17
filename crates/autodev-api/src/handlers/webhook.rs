@@ -172,7 +172,7 @@ async fn handle_pr_review(
 async fn handle_workflow_completion(
     state: ApiState,
     workflow: autodev_github::webhook::WorkflowRunPayload,
-    repo: autodev_github::webhook::RepositoryPayload,
+    _repo: autodev_github::webhook::RepositoryPayload,
 ) {
     tracing::info!(
         "Handling workflow completion: {} - {:?}",

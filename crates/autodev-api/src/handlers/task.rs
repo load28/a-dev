@@ -1,7 +1,6 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -200,7 +199,7 @@ pub async fn list_tasks(
     Ok(Json(responses))
 }
 
-fn task_to_response(task: &autodev_core::Task) -> TaskResponse {
+pub fn task_to_response(task: &autodev_core::Task) -> TaskResponse {
     TaskResponse {
         id: task.id.clone(),
         title: task.title.clone(),

@@ -60,9 +60,10 @@ async fn main() -> Result<()> {
             Arc::new(autodev_ai::ClaudeAgent::new(api_key))
         }
         "gpt-4" | "openai" => {
-            let api_key = env::var("OPENAI_API_KEY")
-                .expect("OPENAI_API_KEY must be set for OpenAI");
-            Arc::new(autodev_ai::OpenAIAgent::new(api_key))
+            tracing::warn!("OpenAI agent not implemented, using Claude instead");
+            let api_key = env::var("ANTHROPIC_API_KEY")
+                .expect("ANTHROPIC_API_KEY must be set");
+            Arc::new(autodev_ai::ClaudeAgent::new(api_key))
         }
         _ => {
             tracing::warn!("Unknown AI agent type: {}, using Claude", ai_agent_type);

@@ -88,13 +88,13 @@ cp .env.example .env
 docker-compose up -d postgres
 
 # 스키마 초기화
-cargo run -- init-db
+cargo run --bin autodev -- init-db
 ```
 
 4. **빌드 및 실행**
 ```bash
 # 개발 모드
-cargo run -- serve --port 3000
+cargo run --bin autodev -- serve --port 3000
 
 # 릴리즈 빌드
 cargo build --release

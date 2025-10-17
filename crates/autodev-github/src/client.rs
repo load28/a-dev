@@ -1,21 +1,22 @@
-use crate::{Repository, Result, WorkflowDispatch};
+use crate::{Repository, Result};
+use octocrab::params::repos::Reference;
 use octocrab::Octocrab;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct GitHubClient {
     client: Octocrab,
-    token: String,
 }
 
 impl GitHubClient {
     pub fn new(token: String) -> Result<Self> {
         let client = Octocrab::builder()
-            .personal_token(token.clone())
+            .personal_token(token)
             .build()?;
 
-        Ok(Self { client, token })
+        Ok(Self { client })
     }
 
     /// Trigger a GitHub Actions workflow
@@ -32,16 +33,15 @@ impl GitHubClient {
             repo.name
         );
 
-        let dispatch = WorkflowDispatch {
-            ref_: repo.branch.clone(),
-            inputs,
-        };
+        // Using octocrab for workflow dispatch (octocrab 0.32 API)
+        // Convert HashMap to serde_json::Value
+        let inputs_json = json!(inputs);
 
-        // Using octocrab for workflow dispatch
-        let response = self
-            .client
-            .workflows(&repo.owner, &repo.name)
-            .dispatch(workflow_file, dispatch.ref_, dispatch.inputs)
+        self.client
+            .actions()
+            .create_workflow_dispatch(&repo.owner, &repo.name, workflow_file, &repo.branch)
+            .inputs(inputs_json)
+            .send()
             .await?;
 
         // Generate a workflow run ID
@@ -66,7 +66,7 @@ impl GitHubClient {
             .send()
             .await?;
 
-        if let Some(run) = runs.workflow_runs.first() {
+        if let Some(run) = runs.items.first() {
             Ok(WorkflowStatus {
                 status: run.status.to_string(),
                 conclusion: run.conclusion.as_ref().map(|c| c.to_string()),
@@ -152,7 +152,7 @@ impl GitHubClient {
             .await?;
 
         Ok(workflows
-            .workflows
+            .items
             .iter()
             .map(|w| w.name.clone())
             .collect())
@@ -173,19 +173,27 @@ impl GitHubClient {
             repo.name
         );
 
-        // Get the ref of the source branch
+        // Get the ref of the source branch (octocrab 0.32 uses Reference enum)
         let source_ref = self
             .client
             .repos(&repo.owner, &repo.name)
-            .get_ref(&format!("heads/{}", from_branch))
+            .get_ref(&Reference::Branch(from_branch.to_string()))
             .await?;
+
+        // Extract SHA from the Object enum using pattern matching (octocrab 0.32)
+        // Object is marked as non-exhaustive, so we need a wildcard pattern
+        use octocrab::models::repos::Object;
+        let sha = match &source_ref.object {
+            Object::Commit { sha, .. } | Object::Tag { sha, .. } => sha.clone(),
+            _ => return Err(anyhow::anyhow!("Unexpected object type in ref").into()),
+        };
 
         // Create new branch
         self.client
             .repos(&repo.owner, &repo.name)
             .create_ref(
-                &format!("refs/heads/{}", branch_name),
-                source_ref.object.sha,
+                &Reference::Branch(branch_name.to_string()),
+                sha,
             )
             .await?;
 

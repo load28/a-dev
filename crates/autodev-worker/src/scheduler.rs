@@ -1,13 +1,16 @@
 use anyhow::Result;
 use std::sync::Arc;
-use std::collections::{HashSet, VecDeque};
+use std::collections::{HashMap, HashSet};
 
-use autodev_core::{AutoDevEngine, CompositeTask, Task};
+use autodev_core::{AutoDevEngine, Task};
 
+// TaskScheduler는 향후 사용 예정
+#[allow(dead_code)]
 pub struct TaskScheduler {
     engine: Arc<AutoDevEngine>,
 }
 
+#[allow(dead_code)]
 impl TaskScheduler {
     pub fn new(engine: Arc<AutoDevEngine>) -> Self {
         Self { engine }
@@ -217,5 +220,3 @@ impl TaskScheduler {
         sorted.push(task.clone());
     }
 }
-
-use std::collections::HashMap;

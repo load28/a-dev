@@ -96,7 +96,7 @@ async fn test_task_decomposition() {
     #[async_trait::async_trait]
     impl AIAgent for MockAgent {
         fn agent_type(&self) -> autodev_ai::AgentType {
-            autodev_ai::AgentType::ClaudeCode
+            autodev_ai::AgentType::Claude
         }
 
         async fn execute_task(

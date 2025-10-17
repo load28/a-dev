@@ -165,6 +165,8 @@ impl TaskExecutor {
         Ok(("myorg".to_string(), "myproject".to_string()))
     }
 
+    // 향후 PR 리뷰 자동 처리 기능에서 사용 예정
+    #[allow(dead_code)]
     pub async fn handle_pr_review(
         &self,
         task_id: &str,
@@ -177,7 +179,7 @@ impl TaskExecutor {
         let repository = Repository::new(owner, name);
 
         // Get PR diff
-        let pr = self.github_client.get_pull_request(&repository, pr_number).await?;
+        let _pr = self.github_client.get_pull_request(&repository, pr_number).await?;
         let pr_diff = ""; // Would fetch actual diff from GitHub
 
         // Use AI to address review comments
@@ -215,6 +217,8 @@ impl TaskExecutor {
         Ok(())
     }
 
+    // 향후 CI 실패 자동 처리 기능에서 사용 예정
+    #[allow(dead_code)]
     pub async fn handle_ci_failure(
         &self,
         task_id: &str,

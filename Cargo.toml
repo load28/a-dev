@@ -72,6 +72,7 @@ autodev-core = { path = "crates/autodev-core" }
 autodev-github = { path = "crates/autodev-github" }
 autodev-ai = { path = "crates/autodev-ai" }
 autodev-db = { path = "crates/autodev-db" }
+autodev-api = { path = "crates/autodev-api" }
 
 [profile.dev]
 opt-level = 0
