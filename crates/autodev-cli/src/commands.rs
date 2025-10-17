@@ -42,7 +42,7 @@ pub async fn execute(
 
             if execute {
                 println!("\nExecuting task...");
-                execute_task(&task, &repository, &engine, &github_client, &ai_agent, &db).await?;
+                execute_task(&task, &repository, &engine, &github_client, &ai_agent, &db, None, None).await?;
             }
         }
 
@@ -102,7 +102,7 @@ pub async fn execute(
                 .ok_or_else(|| anyhow::anyhow!("Task not found"))?;
 
             let repository = Repository::new(owner, repo);
-            execute_task(&task, &repository, &engine, &github_client, &ai_agent, &db).await?;
+            execute_task(&task, &repository, &engine, &github_client, &ai_agent, &db, None, None).await?;
         }
 
         Commands::Status { task_id } => {
@@ -294,6 +294,8 @@ async fn execute_task(
     github_client: &Arc<GitHubClient>,
     _ai_agent: &Arc<dyn AIAgent>,
     db: &Option<Arc<Database>>,
+    parent_branch: Option<&str>,
+    composite_task_id: Option<&str>,
 ) -> Result<()> {
     println!("\n{}", "=".repeat(60));
     println!("Executing: {}", task.title);
@@ -302,20 +304,30 @@ async fn execute_task(
     // Update status
     engine.update_task_status(&task.id, TaskStatus::InProgress, None).await?;
 
+    // Determine base branch and target branch
+    let (base_branch, target_branch) = if let Some(parent) = parent_branch {
+        // Composite task: branch from parent, PR to parent
+        (parent.to_string(), parent.to_string())
+    } else {
+        // Standalone task: branch from main, PR to main
+        ("main".to_string(), "main".to_string())
+    };
+
     // Create branch for this task
     let task_branch = format!("autodev/{}", task.id);
-    if let Err(e) = github_client.create_branch(repository, &task_branch, "main").await {
+    if let Err(e) = github_client.create_branch(repository, &task_branch, &base_branch).await {
         tracing::warn!("Failed to create branch (may already exist): {}", e);
     }
 
     // Trigger GitHub workflow with new architecture inputs
     let mut workflow_inputs = std::collections::HashMap::new();
     workflow_inputs.insert("task_id".to_string(), task.id.clone());
-    workflow_inputs.insert("composite_task_id".to_string(), "standalone".to_string());
+    workflow_inputs.insert("composite_task_id".to_string(),
+        composite_task_id.unwrap_or("standalone").to_string());
     workflow_inputs.insert("task_title".to_string(), task.title.clone());
     workflow_inputs.insert("prompt".to_string(), task.prompt.clone());
     workflow_inputs.insert("base_branch".to_string(), task_branch.clone());
-    workflow_inputs.insert("target_branch".to_string(), "main".to_string());
+    workflow_inputs.insert("target_branch".to_string(), target_branch.clone());
 
     println!("Triggering GitHub Actions workflow...");
     println!("  Task ID: {}", task.id);
@@ -376,6 +388,16 @@ async fn execute_composite_task(
     println!("Auto-approve: {}", composite_task.auto_approve);
     println!("{}", "=".repeat(60));
 
+    // Create parent branch for composite task
+    let parent_branch = format!("autodev/{}", composite_task.id);
+    println!("\nCreating parent branch: {}", parent_branch);
+
+    if let Err(e) = github_client.create_branch(repository, &parent_branch, "main").await {
+        tracing::warn!("Failed to create parent branch (may already exist): {}", e);
+    } else {
+        println!("✓ Parent branch created: {}", parent_branch);
+    }
+
     let batches = composite_task.get_parallel_batches();
 
     for (i, batch) in batches.iter().enumerate() {
@@ -393,9 +415,20 @@ async fn execute_composite_task(
             let github_client = github_client.clone();
             let ai_agent = ai_agent.clone();
             let db = db.clone();
+            let parent_branch_clone = parent_branch.clone();
+            let composite_id = composite_task.id.clone();
 
             let handle = tokio::spawn(async move {
-                execute_task(&task, &repository, &engine, &github_client, &ai_agent, &db).await
+                execute_task(
+                    &task,
+                    &repository,
+                    &engine,
+                    &github_client,
+                    &ai_agent,
+                    &db,
+                    Some(&parent_branch_clone),
+                    Some(&composite_id),
+                ).await
             });
 
             handles.push(handle);

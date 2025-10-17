@@ -163,6 +163,25 @@ impl GitHubClient {
         })
     }
 
+    /// Merge a pull request
+    pub async fn merge_pull_request(
+        &self,
+        repo: &Repository,
+        pr_number: u64,
+    ) -> Result<()> {
+        tracing::info!("Merging PR #{} in {}/{}", pr_number, repo.owner, repo.name);
+
+        self.client
+            .pulls(&repo.owner, &repo.name)
+            .merge(pr_number)
+            .send()
+            .await?;
+
+        tracing::info!("✓ PR #{} merged successfully", pr_number);
+
+        Ok(())
+    }
+
     /// List repository workflows
     pub async fn list_workflows(&self, repo: &Repository) -> Result<Vec<String>> {
         let workflows = self

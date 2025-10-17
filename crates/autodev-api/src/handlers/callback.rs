@@ -73,6 +73,39 @@ pub async fn workflow_complete(
             .await;
     }
 
+    // If the task succeeded and has PR, auto-merge if it's a subtask
+    if payload.success && payload.pr_number.is_some() && payload.composite_task_id != "standalone" {
+        let repo = Repository::new(
+            payload.repository_owner.clone(),
+            payload.repository_name.clone(),
+        );
+
+        // Auto-merge subtask PR to parent branch
+        if let Some(pr_number) = payload.pr_number {
+            tracing::info!(
+                "Auto-merging subtask PR #{} for task {} to parent branch",
+                pr_number,
+                payload.task_id
+            );
+
+            match state.github_client.merge_pull_request(&repo, pr_number).await {
+                Ok(_) => {
+                    tracing::info!(
+                        "✓ Subtask PR #{} auto-merged to parent branch",
+                        pr_number
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to auto-merge subtask PR #{}: {}",
+                        pr_number,
+                        e
+                    );
+                }
+            }
+        }
+    }
+
     // If the task succeeded, check if we can start dependent tasks
     let mut next_tasks = Vec::new();
 
