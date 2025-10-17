@@ -1,0 +1,13 @@
+# Cargo 빌드 및 실행 설정
+
+# 각 바이너리를 편리하게 실행하기 위한 alias
+[alias]
+dev = "run --bin autodev --"
+api = "run --bin autodev-api --"
+worker = "run --bin autodev-worker --"
+
+# 사용 예시:
+# cargo dev init-db
+# cargo dev task --owner myorg --repo myrepo --title "task" --description "desc" --prompt "prompt"
+# cargo api
+# cargo worker
