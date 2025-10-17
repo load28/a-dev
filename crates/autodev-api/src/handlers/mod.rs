@@ -1,3 +1,4 @@
+pub mod callback;
 pub mod composite;
 pub mod health;
 pub mod stats;

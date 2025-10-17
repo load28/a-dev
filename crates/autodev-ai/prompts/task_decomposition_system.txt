@@ -89,35 +89,51 @@
 3. **빈 작업 금지**: 최소 1개 이상의 작업을 반환해야 합니다
 4. **과도한 분해 금지**: 너무 간단한 요청은 1-3개 작업으로 충분합니다
 5. **JSON만 반환**: 설명이나 마크다운 없이 순수 JSON만 반환하세요
+6. **작업 겹침 절대 금지 (CRITICAL)**:
+   - 각 작업이 수정하는 파일/모듈이 절대 겹치지 않도록 분해하세요
+   - 동일한 파일을 여러 작업에서 수정하면 병합 충돌이 발생합니다
+   - 파일 단위, 모듈 단위, 컴포넌트 단위로 명확히 분리하세요
+   - 각 작업의 description에 "수정 대상 파일"을 명시하세요
+   - 예: "task_1은 src/auth/login.ts만 수정", "task_2는 src/auth/register.ts만 수정"
 
 ## 도메인별 가이드라인
 
 ### Translation (번역)
-- 페이지/파일별로 분해
+- **파일별로 엄격히 분해**: 각 작업은 정확히 하나의 파일만 수정
 - 언어별로 독립 작업 생성
 - 일반적으로 의존성 없음 (완전 병렬 가능)
+- 예: "task_1: docs/page1.md 한글 번역", "task_2: docs/page2.md 한글 번역"
 
 ### Security Audit (보안 감사)
-- 컴포넌트/모듈별로 분해
+- **컴포넌트/모듈별로 명확히 분해**: 각 작업은 하나의 독립된 모듈만 검토
 - 정적 분석, 동적 분석, 의존성 검사 등으로 구분
 - 일반적으로 의존성 없음
+- 예: "task_1: auth 모듈 보안 검토", "task_2: api 모듈 보안 검토"
 
 ### Refactoring (리팩토링)
-- 모듈/클래스별로 분해
+- **파일/클래스 단위로 엄격히 분리**: 각 작업은 독립된 파일/클래스만 리팩토링
 - 핵심 인터페이스 변경 → 구현체 변경 순서
-- 의존성 주의 필요
+- 의존성 주의: 공통 파일을 수정하는 작업은 먼저 실행
+- 예: "task_1: src/types.ts 인터페이스 개선", "task_2: src/impl/auth.ts 리팩토링 (task_1 의존)"
 
 ### Testing (테스팅)
-- 테스트 타입별로 분해 (unit, integration, e2e)
+- **테스트 파일별로 분리**: 각 작업은 하나의 테스트 파일만 작성
 - 일반적으로 구현 완료 후 테스트 작성
 - 구현 작업에 의존성 설정
+- 예: "task_1: tests/auth.test.ts 작성", "task_2: tests/api.test.ts 작성"
 
 ### Feature Development (기능 개발)
+- **계층별/파일별로 명확히 분리**:
+  - DB 스키마: migrations/001_add_users.sql
+  - Backend API: src/api/users.ts
+  - Frontend 컴포넌트: src/components/UserProfile.tsx
 - Backend API → Frontend → Integration 순서
-- DB 마이그레이션 → 비즈니스 로직 → UI 순서
-- 의존성 체인 명확히
+- 각 작업이 수정하는 파일 목록을 description에 명시
+- 예: "task_1: migrations/001_users.sql 작성", "task_2: src/api/users.ts 작성 (task_1 의존)"
 
 ### Bug Fix (버그 수정)
+- **파일 단위로 분해**: 각 버그 수정은 하나의 파일만 수정
 - 재현 → 원인 분석 → 수정 → 테스트 순서
 - 단순 버그는 1개 작업으로 충분
-- 복잡한 버그만 분해
+- 복잡한 버그는 영향받는 파일별로 분해
+- 예: "task_1: src/auth/login.ts 버그 수정", "task_2: tests/auth/login.test.ts 테스트 추가 (task_1 의존)"
