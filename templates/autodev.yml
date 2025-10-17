@@ -111,17 +111,16 @@ jobs:
           Powered by Claude 4.5 Sonnet
           EOFPR
 
-          PR_JSON=$(gh pr create \
+          PR_URL=$(gh pr create \
             --base "${{ inputs.target_branch }}" \
             --head "${{ inputs.base_branch }}" \
             --title "AutoDev: ${{ inputs.task_title }}" \
-            --body-file /tmp/pr_body.md \
-            --json number,url)
+            --body-file /tmp/pr_body.md)
 
-          echo "PR created: $PR_JSON"
+          echo "PR created: $PR_URL"
 
-          PR_NUMBER=$(echo $PR_JSON | jq -r '.number')
-          PR_URL=$(echo $PR_JSON | jq -r '.url')
+          # URL에서 PR 번호 추출 (예: https://github.com/owner/repo/pull/123 -> 123)
+          PR_NUMBER=$(echo "$PR_URL" | sed 's/.*\/pull\///')
 
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "pr_url=$PR_URL" >> $GITHUB_OUTPUT
