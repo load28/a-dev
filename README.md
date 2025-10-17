@@ -218,7 +218,7 @@ cp /path/to/auto-dev/templates/autodev.yml .github/workflows/
 
 # 또는 직접 다운로드
 curl -o .github/workflows/autodev.yml \
-  https://raw.githubusercontent.com/load28/auto-dev/main/templates/autodev.yml
+  https://raw.githubusercontent.com/load28/a-dev/main/templates/autodev.yml
 ```
 
 ### 2. GitHub Secrets 설정

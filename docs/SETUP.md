@@ -56,7 +56,7 @@ cp /path/to/auto-dev/templates/autodev.yml .github/workflows/
 
 # Or download directly
 curl -o .github/workflows/autodev.yml \
-  https://raw.githubusercontent.com/load28/auto-dev/main/templates/autodev.yml
+  https://raw.githubusercontent.com/load28/a-dev/main/templates/autodev.yml
 ```
 
 ### Option B: Create Manually
@@ -99,7 +99,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: load28/auto-dev/action@main
+      - uses: load28/autodev-action@main
         with:
           prompt: ${{ inputs.prompt }}
           base_branch: ${{ inputs.base_branch }}

@@ -42,7 +42,7 @@ cp ~/path/to/auto-dev/templates/autodev.yml .github/workflows/
 # GitHub에서 직접 다운로드 (auto-dev를 push한 경우)
 mkdir -p .github/workflows
 curl -o .github/workflows/autodev.yml \
-  https://raw.githubusercontent.com/load28/auto-dev/main/templates/autodev.yml
+  https://raw.githubusercontent.com/load28/a-dev/main/templates/autodev.yml
 ```
 
 #### 옵션 C: 수동 복사

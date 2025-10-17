@@ -45,7 +45,7 @@ jobs:
 
       # Single step - Claude Code handles everything!
       - name: Run AutoDev with Claude Code
-        uses: load28/auto-dev/action@main
+        uses: load28/autodev-action@main
         with:
           prompt: ${{ inputs.prompt }}
           base_branch: ${{ inputs.base_branch }}
