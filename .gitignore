@@ -22,3 +22,8 @@ target/
 
 # GitHub App private keys
 *.pem
+
+# Dashboard (Node.js/Vite project)
+dashboard/node_modules/
+dashboard/dist/
+dashboard/.vite/
