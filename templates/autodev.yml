@@ -149,16 +149,10 @@ jobs:
           sed -i 's/^          //' /tmp/claude_prompt.txt
 
           # Execute Claude Code with enhanced prompt
-          # -p: Enable headless mode with output
-          # --permission-mode acceptEdits: Auto-approve file modifications (CRITICAL for CI/CD)
-          # --dangerously-skip-permissions: Skip permission prompts
-          # --output-format text: Format output for CI/CD logging
-          claude -p \
+          claude \
             --dangerously-skip-permissions \
-            --permission-mode acceptEdits \
             --allowedTools "Bash,Read,Write,Edit,Glob,Grep" \
             --model sonnet \
-            --output-format text \
             "$(cat /tmp/claude_prompt.txt)"
 
           echo ""
