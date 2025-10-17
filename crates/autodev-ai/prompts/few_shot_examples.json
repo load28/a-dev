@@ -1,10 +1,10 @@
 [
   {
-    "domain": "translation",
+    "domain": "Translation",
     "user_prompt": "모든 문서 페이지(home, about, pricing, docs, blog)를 한국어, 일본어, 중국어, 스페인어로 번역해주세요",
     "assistant_response": {
       "analysis": "사용자는 5개 페이지를 4개 언어로 번역하길 원합니다. 각 페이지-언어 조합은 독립적으로 실행 가능하므로 완전 병렬 처리 가능합니다.",
-      "domain": "translation",
+      "domain": "Translation",
       "estimated_complexity": "medium",
       "tasks": [
         {"id": "translate_home_ko", "title": "번역: Home 페이지 → 한국어", "description": "Home 페이지의 모든 텍스트 콘텐츠를 한국어로 번역", "dependencies": [], "estimated_duration_minutes": 30, "tags": ["translation", "korean"]},
@@ -36,11 +36,11 @@
     }
   },
   {
-    "domain": "security",
+    "domain": "Security",
     "user_prompt": "RPC 서버 구현에 대해 인증, 권한 부여, 입력 검증, SQL 인젝션, XSS 취약점을 포함한 종합적인 보안 감사를 수행해주세요",
     "assistant_response": {
       "analysis": "5가지 보안 영역에 대한 종합 감사입니다. 각 영역은 독립적으로 검사 가능하므로 병렬 실행이 적합합니다.",
-      "domain": "security",
+      "domain": "Security",
       "estimated_complexity": "high",
       "tasks": [
         {"id": "audit_authentication", "title": "인증 메커니즘 보안 감사", "description": "JWT 토큰 검증, 세션 관리, 비밀번호 저장 방식 등 인증 관련 보안 취약점 검사", "dependencies": [], "estimated_duration_minutes": 60, "tags": ["security", "authentication"]},
@@ -59,11 +59,11 @@
     }
   },
   {
-    "domain": "feature",
+    "domain": "Feature",
     "user_prompt": "아바타 업로드, 자기소개 편집, 프라이버시 설정 기능이 있는 사용자 프로필 관리 기능을 추가해주세요",
     "assistant_response": {
       "analysis": "사용자 프로필 관리 기능 추가입니다. Backend API → Frontend UI → Integration 순서로 진행하며, 데이터베이스 스키마 변경이 선행되어야 합니다.",
-      "domain": "feature",
+      "domain": "Feature",
       "estimated_complexity": "high",
       "tasks": [
         {"id": "design_db_schema", "title": "DB 스키마 설계 및 마이그레이션", "description": "user_profiles 테이블 설계 (avatar_url, bio, privacy_settings 컬럼), 마이그레이션 SQL 작성 및 실행", "dependencies": [], "estimated_duration_minutes": 45, "tags": ["database", "backend"]},
@@ -85,11 +85,11 @@
     }
   },
   {
-    "domain": "refactoring",
+    "domain": "Refactoring",
     "user_prompt": "모놀리식 인증 서비스를 마이크로서비스로 리팩토링해주세요: 인증 서비스, 권한 부여 서비스, 사용자 관리 서비스",
     "assistant_response": {
       "analysis": "모놀리식 인증 서비스를 3개 마이크로서비스로 분리합니다. 인터페이스 정의 → 각 서비스 구현 → 통합 순서로 진행합니다.",
-      "domain": "refactoring",
+      "domain": "Refactoring",
       "estimated_complexity": "high",
       "tasks": [
         {"id": "define_service_interfaces", "title": "마이크로서비스 인터페이스 정의", "description": "각 서비스의 API 스펙, 데이터 모델, 통신 프로토콜(gRPC/REST) 정의", "dependencies": [], "estimated_duration_minutes": 90, "tags": ["architecture", "design"]},
@@ -115,11 +115,11 @@
     }
   },
   {
-    "domain": "bugfix",
+    "domain": "Bugfix",
     "user_prompt": "WebSocket 연결 핸들러의 메모리 누수로 인해 24시간 후 서버가 크래시되는 문제를 수정해주세요",
     "assistant_response": {
       "analysis": "메모리 누수로 인한 서버 크래시 버그입니다. 재현 → 프로파일링 → 원인 분석 → 수정 → 검증 순서로 진행합니다.",
-      "domain": "bugfix",
+      "domain": "Bugfix",
       "estimated_complexity": "medium",
       "tasks": [
         {"id": "reproduce_memory_leak", "title": "메모리 누수 재현", "description": "테스트 환경에서 WebSocket 연결 시뮬레이션, 메모리 사용량 모니터링, 24시간 압축 테스트", "dependencies": [], "estimated_duration_minutes": 60, "tags": ["debugging", "testing"]},
@@ -142,11 +142,11 @@
     }
   },
   {
-    "domain": "testing",
+    "domain": "Testing",
     "user_prompt": "결제 처리 모듈의 테스트 커버리지를 90%로 높여주세요",
     "assistant_response": {
       "analysis": "결제 처리 모듈의 테스트 커버리지를 90%로 높이는 작업입니다. 현재 커버리지 분석 → 미커버 영역 식별 → 테스트 작성 순서로 진행합니다.",
-      "domain": "testing",
+      "domain": "Testing",
       "estimated_complexity": "medium",
       "tasks": [
         {"id": "analyze_current_coverage", "title": "현재 테스트 커버리지 분석", "description": "pytest-cov/coverage.py 실행, 미커버 라인/브랜치 식별, 우선순위 결정", "dependencies": [], "estimated_duration_minutes": 30, "tags": ["testing", "analysis"]},
