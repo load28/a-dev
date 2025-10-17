@@ -76,12 +76,18 @@ jobs:
           echo "============================================================"
           echo ""
 
-          # Execute Claude Code with automatic permissions
+          # Execute Claude Code with automatic permissions (based on official docs)
+          # https://docs.claude.com/en/docs/claude-code/headless
+          # https://docs.claude.com/en/docs/claude-code/cli-reference
           claude \
+            --print \
             --dangerously-skip-permissions \
-            -p "${{ inputs.prompt }}" \
+            --permission-mode acceptEdits \
+            --allowedTools "Bash,Read,Write,Edit,Glob,Grep" \
             --model sonnet \
-            --max-turns 10
+            --max-turns 10 \
+            --output-format stream-json \
+            "${{ inputs.prompt }}"
 
           echo ""
           echo "✓ Claude Code execution completed"
