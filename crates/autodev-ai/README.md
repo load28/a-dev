@@ -7,7 +7,7 @@ AutoDev의 AI 모듈로, Anthropic Claude API를 사용하여 소프트웨어 �
 **이 프로젝트의 모든 AI 프롬프트와 응답은 한글로만 작동합니다.**
 - 작업 분해부터 코드 리뷰, CI 수정, 보안 분석까지 모든 AI 기능이 한글 중심
 - 전문 용어는 영어 유지 (JWT, API, CI/CD 등)
-- Claude 3.5 Sonnet 모델 사용 (한글 이해도 최적화)
+- **Claude 4.5 Sonnet 모델** 사용 (최신, 코딩 및 에이전트 작업 최적화)
 
 ## 주요 기능
 
@@ -178,13 +178,19 @@ for issue in issues {
 ### 특정 Claude 모델 선택
 
 ```rust
-// Opus (가장 강력, 느림)
+// Claude 4.5 Sonnet (최신, 가장 강력, 코딩 최적화, 기본값)
+let agent = Arc::new(ClaudeAgent::with_model(api_key, "4.5"));
+
+// Claude 3.5 Sonnet (이전 버전, 안정적)
+let agent = Arc::new(ClaudeAgent::with_model(api_key, "3.5"));
+
+// Claude 3 Opus (가장 강력한 3세대 모델)
 let agent = Arc::new(ClaudeAgent::with_model(api_key, "opus"));
 
-// Sonnet 3.5 (균형잡힌 성능, 기본값)
-let agent = Arc::new(ClaudeAgent::with_model(api_key, "sonnet"));
+// Claude 4.5 Haiku (빠르고 저렴)
+let agent = Arc::new(ClaudeAgent::with_model(api_key, "haiku-4.5"));
 
-// Haiku (빠름, 저렴)
+// Claude 3 Haiku (레거시, 가장 저렴)
 let agent = Arc::new(ClaudeAgent::with_model(api_key, "haiku"));
 ```
 
@@ -372,7 +378,13 @@ ANTHROPIC_API_KEY=sk-ant-... cargo test --package autodev-ai -- --ignored
 | Security | 5-8초 | 5-10 | $0.03-0.06 |
 | Feature | 8-12초 | 6-15 | $0.05-0.10 |
 
-*Claude 3.5 Sonnet 기준
+*Claude 4.5 Sonnet 기준 ($3/M input, $15/M output)
+
+### Claude 4.5 Sonnet 특징
+- **1M 토큰 컨텍스트**: 대규모 코드베이스 처리 가능
+- **64K 출력 토큰**: 긴 코드 생성 및 상세 분석 가능
+- **코딩 최적화**: 복잡한 리팩토링 및 멀티 스텝 작업 처리 능력 향상
+- **Prompt Caching**: 최대 90% 비용 절감 가능 (반복 프롬프트)
 
 ## 제한 사항
 

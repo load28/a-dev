@@ -20,20 +20,26 @@ impl ClaudeAgent {
             base: BaseAgent::new(
                 AgentType::Claude,
                 api_key.clone(),
-                "claude-3-5-sonnet-20241022".to_string(), // 최신 Claude 3.5 Sonnet 모델 사용
+                "claude-sonnet-4-5-20250929".to_string(), // Claude 4.5 Sonnet (최신, 코딩 및 에이전트 작업 최적화)
             ),
             client: Client::new(),
             api_url: "https://api.anthropic.com/v1".to_string(),
         }
     }
 
-    /// 특정 모델을 지정하여 생성 (opus, sonnet, haiku)
+    /// 특정 모델을 지정하여 생성 (4.5, sonnet, opus, haiku)
     pub fn with_model(api_key: String, model: &str) -> Self {
         let model_id = match model.to_lowercase().as_str() {
+            // Claude 4.5 모델 (최신)
+            "sonnet-4.5" | "4.5" | "sonnet4.5" => "claude-sonnet-4-5-20250929",
+            "haiku-4.5" | "haiku4.5" => "claude-haiku-4-5-20251001",
+
+            // Claude 3 모델 (레거시)
             "opus" => "claude-3-opus-20240229",
-            "sonnet" | "sonnet-3.5" => "claude-3-5-sonnet-20241022",
+            "sonnet" | "sonnet-3.5" | "3.5" => "claude-3-5-sonnet-20241022",
             "haiku" => "claude-3-haiku-20240307",
-            _ => "claude-3-5-sonnet-20241022", // 기본값
+
+            _ => "claude-sonnet-4-5-20250929", // 기본값: 4.5 Sonnet
         };
 
         Self {
