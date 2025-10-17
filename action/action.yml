@@ -1,0 +1,36 @@
+name: 'AutoDev Action'
+description: 'AI-powered code generation with Claude Code'
+author: 'load28'
+
+branding:
+  icon: 'code'
+  color: 'blue'
+
+inputs:
+  prompt:
+    description: 'Instructions for AutoDev (e.g., "Add Google OAuth authentication")'
+    required: true
+  base_branch:
+    description: 'Base branch to create new branch from'
+    required: false
+    default: 'main'
+  agent:
+    description: 'AI agent to use (claude_code)'
+    required: false
+    default: 'claude_code'
+  task_title:
+    description: 'Task title for PR'
+    required: false
+    default: 'AutoDev Task'
+
+outputs:
+  pr_url:
+    description: 'Created pull request URL'
+  pr_number:
+    description: 'Created pull request number'
+  branch_name:
+    description: 'Created branch name'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

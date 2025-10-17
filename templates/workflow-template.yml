@@ -1,0 +1,56 @@
+# AutoDev Workflow Template
+# Copy this file to your repository: .github/workflows/autodev.yml
+
+name: 'AutoDev'
+run-name: 'AutoDev: ${{ inputs.task_title }}'
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "코딩 작업 설명 (예: 구글 OAuth 인증 추가)"
+        type: string
+        required: true
+      base_branch:
+        description: "기준 브랜치"
+        type: string
+        required: false
+        default: 'main'
+      task_title:
+        description: "작업 제목 (PR 제목으로 사용됨)"
+        type: string
+        required: false
+        default: 'AutoDev Task'
+      agent:
+        description: "AI 에이전트"
+        type: choice
+        default: 'claude_code'
+        options:
+          - claude_code
+
+jobs:
+  autodev:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for Claude Code
+
+      # Single step - Claude Code handles everything!
+      - name: Run AutoDev with Claude Code
+        uses: load28/auto-dev/action@main
+        with:
+          prompt: ${{ inputs.prompt }}
+          base_branch: ${{ inputs.base_branch }}
+          agent: ${{ inputs.agent }}
+          task_title: ${{ inputs.task_title }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
