@@ -84,7 +84,7 @@ impl TaskExecutor {
 
         // Check workflow status
         let status = self.github_client
-            .check_workflow_status(&repository, &workflow_run_id)
+            .get_workflow_run_status(&repository, workflow_run_id)
             .await?;
 
         if status.status == "completed" && status.conclusion == Some("success".to_string()) {

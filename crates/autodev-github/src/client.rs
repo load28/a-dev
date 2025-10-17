@@ -25,7 +25,7 @@ impl GitHubClient {
         repo: &Repository,
         workflow_file: &str,
         inputs: HashMap<String, String>,
-    ) -> Result<String> {
+    ) -> Result<u64> {
         tracing::info!(
             "Triggering workflow {} for {}/{}",
             workflow_file,
@@ -37,6 +37,7 @@ impl GitHubClient {
         // Convert HashMap to serde_json::Value
         let inputs_json = json!(inputs);
 
+        // Trigger the workflow
         self.client
             .actions()
             .create_workflow_dispatch(&repo.owner, &repo.name, workflow_file, &repo.branch)
@@ -44,39 +45,75 @@ impl GitHubClient {
             .send()
             .await?;
 
-        // Generate a workflow run ID
-        let workflow_run_id = format!("run_{}", chrono::Utc::now().format("%Y%m%d_%H%M%S"));
+        // Wait briefly for the workflow to appear in the API
+        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 
-        tracing::info!("Workflow triggered: {}", workflow_run_id);
+        // Get the latest workflow run using REST API directly
+        let workflow_runs_url = format!(
+            "/repos/{}/{}/actions/workflows/{}/runs",
+            repo.owner, repo.name, workflow_file
+        );
 
-        Ok(workflow_run_id)
+        let response: serde_json::Value = self
+            .client
+            .get(&workflow_runs_url, None::<&()>)
+            .await?;
+
+        if let Some(runs) = response["workflow_runs"].as_array() {
+            if let Some(run) = runs.first() {
+                if let Some(run_id) = run["id"].as_u64() {
+                    tracing::info!("Workflow triggered with run ID: {}", run_id);
+                    return Ok(run_id);
+                }
+            }
+        }
+
+        // Fallback: return a timestamp-based ID if we can't get the actual run
+        let fallback_id = chrono::Utc::now().timestamp() as u64;
+        tracing::warn!("Could not get workflow run ID, using fallback: {}", fallback_id);
+        Ok(fallback_id)
     }
 
-    /// Check workflow status
+    /// Get workflow run status by ID
+    pub async fn get_workflow_run_status(
+        &self,
+        repo: &Repository,
+        run_id: u64,
+    ) -> Result<WorkflowStatus> {
+        tracing::debug!("Checking workflow run status: {}", run_id);
+
+        let run_url = format!("/repos/{}/{}/actions/runs/{}", repo.owner, repo.name, run_id);
+
+        let run: serde_json::Value = self
+            .client
+            .get(&run_url, None::<&()>)
+            .await?;
+
+        let status = run["status"].as_str().unwrap_or("unknown").to_string();
+        let conclusion = run["conclusion"].as_str().map(|s| s.to_string());
+
+        Ok(WorkflowStatus {
+            status,
+            conclusion,
+        })
+    }
+
+    /// Check workflow status (legacy method, kept for compatibility)
     pub async fn check_workflow_status(
         &self,
         repo: &Repository,
         run_id: &str,
     ) -> Result<WorkflowStatus> {
-        // Get workflow run status
-        let runs = self
-            .client
-            .workflows(&repo.owner, &repo.name)
-            .list_runs(run_id)
-            .send()
-            .await?;
-
-        if let Some(run) = runs.items.first() {
-            Ok(WorkflowStatus {
-                status: run.status.to_string(),
-                conclusion: run.conclusion.as_ref().map(|c| c.to_string()),
-            })
-        } else {
-            Ok(WorkflowStatus {
-                status: "unknown".to_string(),
-                conclusion: None,
-            })
+        // Try to parse as u64
+        if let Ok(id) = run_id.parse::<u64>() {
+            return self.get_workflow_run_status(repo, id).await;
         }
+
+        // Fallback: return unknown
+        Ok(WorkflowStatus {
+            status: "unknown".to_string(),
+            conclusion: None,
+        })
     }
 
     /// Create a pull request
@@ -180,6 +217,40 @@ impl GitHubClient {
         tracing::info!("✓ PR #{} merged successfully", pr_number);
 
         Ok(())
+    }
+
+    /// Check if a pull request is merged
+    pub async fn is_pr_merged(
+        &self,
+        repo: &Repository,
+        pr_number: u64,
+    ) -> Result<bool> {
+        let pr = self
+            .client
+            .pulls(&repo.owner, &repo.name)
+            .get(pr_number)
+            .await?;
+
+        Ok(pr.merged_at.is_some())
+    }
+
+    /// Find PR by head branch
+    pub async fn find_pr_by_branch(
+        &self,
+        repo: &Repository,
+        branch: &str,
+    ) -> Result<Option<u64>> {
+        let prs = self
+            .client
+            .pulls(&repo.owner, &repo.name)
+            .list()
+            .state(octocrab::params::State::All)
+            .head(format!("{}:{}", repo.owner, branch))
+            .per_page(1)
+            .send()
+            .await?;
+
+        Ok(prs.items.first().map(|pr| pr.number))
     }
 
     /// List repository workflows
