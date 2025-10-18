@@ -437,7 +437,7 @@ async fn execute_composite_task(
     repository: &Repository,
     engine: &Arc<AutoDevEngine>,
     github_client: &Arc<GitHubClient>,
-    ai_agent: &Arc<dyn AIAgent>,
+    _ai_agent: &Arc<dyn AIAgent>,
     db: &Option<Arc<Database>>,
 ) -> Result<()> {
     println!("\n{}", "=".repeat(60));
