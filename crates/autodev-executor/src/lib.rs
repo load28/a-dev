@@ -11,6 +11,7 @@ async fn wait_for_batch_completion(
     workflow_runs: Vec<(Task, u64)>,
     repository: &Repository,
     github_client: &Arc<GitHubClient>,
+    auto_approve: bool,
 ) -> Result<()> {
     for (task, run_id) in workflow_runs {
         let task_branch = format!("autodev/{}", task.id);
@@ -48,40 +49,80 @@ async fn wait_for_batch_completion(
             }
         }
 
-        // Step 2: Wait for PR to be created and merged
-        tracing::info!("Waiting for PR merge for task: {}", task.title);
+        // Step 2: Wait for PR to be created
+        tracing::info!("Waiting for PR to be created for task: {}", task.title);
         let mut pr_number: Option<u64> = None;
 
         for _ in 0..20 {  // Max 10 minutes (20 * 30s)
             tokio::time::sleep(Duration::from_secs(30)).await;
 
             // Find PR by branch
-            if pr_number.is_none() {
-                if let Ok(Some(num)) = github_client.find_pr_by_branch(repository, &task_branch).await {
-                    pr_number = Some(num);
-                    tracing::info!("Found PR #{} for task: {}", num, task.title);
+            if let Ok(Some(num)) = github_client.find_pr_by_branch(repository, &task_branch).await {
+                pr_number = Some(num);
+                tracing::info!("Found PR #{} for task: {}", num, task.title);
+                break;
+            }
+        }
+
+        let pr_num = pr_number.ok_or_else(|| {
+            anyhow::anyhow!("PR not found for task: {}", task.title)
+        })?;
+
+        // Step 3: Auto-merge if enabled, otherwise wait for manual merge
+        if auto_approve {
+            tracing::info!("Auto-approving PR #{} for task: {}", pr_num, task.title);
+
+            // Attempt to merge the PR
+            match github_client.merge_pull_request(repository, pr_num).await {
+                Ok(_) => {
+                    tracing::info!("✓ PR #{} auto-merged successfully for task: {}", pr_num, task.title);
+                }
+                Err(e) => {
+                    tracing::error!("Failed to auto-merge PR #{}: {}", pr_num, e);
+                    return Err(anyhow::anyhow!("Failed to auto-merge PR #{}: {}", pr_num, e));
                 }
             }
+        } else {
+            // Wait for manual merge
+            tracing::info!("Waiting for manual merge of PR #{} for task: {}", pr_num, task.title);
 
-            // Check if PR is merged
-            if let Some(num) = pr_number {
-                match github_client.is_pr_merged(repository, num).await {
+            for _ in 0..20 {  // Max 10 minutes (20 * 30s)
+                tokio::time::sleep(Duration::from_secs(30)).await;
+
+                match github_client.is_pr_merged(repository, pr_num).await {
                     Ok(true) => {
-                        tracing::info!("PR #{} merged for task: {}", num, task.title);
+                        tracing::info!("✓ PR #{} manually merged for task: {}", pr_num, task.title);
                         break;
                     }
                     Ok(false) => {
-                        // Still waiting for merge
+                        // Still waiting for manual merge
                     }
                     Err(e) => {
                         tracing::warn!("Error checking PR merge status: {}", e);
                     }
                 }
             }
-        }
 
-        if pr_number.is_none() {
-            return Err(anyhow::anyhow!("PR not found for task: {}", task.title));
+            // Verify merge completed
+            match github_client.is_pr_merged(repository, pr_num).await {
+                Ok(true) => {
+                    tracing::info!("PR #{} merge confirmed", pr_num);
+                }
+                Ok(false) => {
+                    return Err(anyhow::anyhow!(
+                        "PR #{} was not merged within timeout period for task: {}",
+                        pr_num,
+                        task.title
+                    ));
+                }
+                Err(e) => {
+                    return Err(anyhow::anyhow!(
+                        "Failed to verify PR #{} merge status: {}",
+                        pr_num,
+                        e
+                    ));
+                }
+            }
         }
     }
 
@@ -231,7 +272,7 @@ pub async fn execute_composite_task(
         tracing::info!("Batch {}/{} workflows triggered", i + 1, batches.len());
 
         // Wait for all workflows and PRs in this batch to complete
-        wait_for_batch_completion(workflow_runs, repository, github_client).await?;
+        wait_for_batch_completion(workflow_runs, repository, github_client, composite_task.auto_approve).await?;
 
         tracing::info!("Batch {}/{} completed and merged", i + 1, batches.len());
     }
