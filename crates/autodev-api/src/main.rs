@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 
     // Initialize GitHub client
     let github_client = Arc::new(
-        autodev_github::GitHubClient::new(github_token)?
+        autodev_github::GitHubClient::new(github_token.clone())?
     );
 
     // Initialize AI agent
@@ -73,12 +73,29 @@ async fn main() -> Result<()> {
         }
     };
 
+    // Initialize Docker executor for local task execution
+    let anthropic_api_key = env::var("ANTHROPIC_API_KEY")
+        .expect("ANTHROPIC_API_KEY must be set");
+    let github_token_clone = github_token.clone();
+
+    let server_url = format!("http://localhost:{}", port);
+    let docker_executor = Arc::new(
+        autodev_worker::DockerExecutor::new(
+            anthropic_api_key,
+            github_token_clone,
+            Some(server_url),
+        ).await?
+    );
+
+    tracing::info!("✓ Docker executor initialized");
+
     // Create app state
     let state = state::ApiState {
         engine,
         db,
         github_client,
         ai_agent,
+        docker_executor,
     };
 
     // Build router

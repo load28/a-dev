@@ -74,6 +74,7 @@ autodev-github = { path = "crates/autodev-github" }
 autodev-ai = { path = "crates/autodev-ai" }
 autodev-db = { path = "crates/autodev-db" }
 autodev-executor = { path = "crates/autodev-executor" }
+autodev-worker = { path = "crates/autodev-worker" }
 autodev-api = { path = "crates/autodev-api" }
 
 [profile.dev]

@@ -67,20 +67,22 @@ pub async fn create_composite_task(
                         }
                     }
 
-                    // Execute composite task immediately in background using executor module
+                    // Execute composite task immediately in background using Docker executor
                     let composite_clone = composite_task.clone();
                     let repo_clone = repo.clone();
                     let engine_clone = state.engine.clone();
                     let github_clone = state.github_client.clone();
                     let db_clone = state.db.clone();
+                    let docker_clone = state.docker_executor.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = autodev_executor::execute_composite_task(
+                        if let Err(e) = autodev_executor::execute_composite_task_docker(
                             &composite_clone,
                             &repo_clone,
                             &engine_clone,
                             &github_clone,
                             &db_clone,
+                            &docker_clone,
                         ).await {
                             tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
                         }
@@ -178,84 +180,24 @@ pub async fn execute_composite_task(
 
     let repo = Repository::new(repo_owner, repo_name);
 
-    // Execute composite task asynchronously
-    let engine = state.engine.clone();
+    // Execute composite task asynchronously using Docker executor
     let composite_clone = composite_task.clone();
     let repo_clone = repo.clone();
-    let github = state.github_client.clone();
-    let ai = state.ai_agent.clone();
-    let db = state.db.clone();
+    let engine_clone = state.engine.clone();
+    let github_clone = state.github_client.clone();
+    let db_clone = state.db.clone();
+    let docker_clone = state.docker_executor.clone();
 
     tokio::spawn(async move {
-        let batches = composite_clone.get_parallel_batches();
-
-        for (i, batch) in batches.iter().enumerate() {
-            tracing::info!(
-                "Executing batch {}/{} for composite task {}",
-                i + 1,
-                batches.len(),
-                composite_clone.id
-            );
-
-            // Execute tasks in batch concurrently
-            let mut handles = Vec::new();
-
-            for task in batch {
-                let engine = engine.clone();
-                let task = task.clone();
-                let repo = repo_clone.clone();
-                let github = github.clone();
-                let ai = ai.clone();
-
-                let handle = tokio::spawn(async move {
-                    // Execute task with AI
-                    if let Ok(result) = ai.execute_task(&task, &repo.full_name()).await {
-                        // Trigger GitHub workflow
-                        let mut inputs = std::collections::HashMap::new();
-                        inputs.insert("task_id".to_string(), task.id.clone());
-                        inputs.insert("branch".to_string(), result.pr_branch);
-                        inputs.insert("commit_message".to_string(), result.commit_message);
-
-                        let _ = github.trigger_workflow(&repo, "autodev.yml", inputs).await;
-
-                        // Update status
-                        let _ = engine
-                            .update_task_status(
-                                &task.id,
-                                autodev_core::TaskStatus::Completed,
-                                None,
-                            )
-                            .await;
-                    }
-                });
-
-                handles.push(handle);
-            }
-
-            // Wait for all tasks in batch to complete
-            for handle in handles {
-                let _ = handle.await;
-            }
-
-            // Wait for approval if not auto-approve and not last batch
-            if !composite_clone.auto_approve && i < batches.len() - 1 {
-                tracing::info!("Waiting for approval to execute next batch...");
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-            }
-        }
-
-        tracing::info!("Composite task {} completed", composite_clone.id);
-
-        // Update database if available
-        if let Some(db) = db {
-            // Log completion
-            let _ = db
-                .add_execution_log(
-                    &composite_clone.id,
-                    "COMPLETED",
-                    "Composite task execution completed",
-                )
-                .await;
+        if let Err(e) = autodev_executor::execute_composite_task_docker(
+            &composite_clone,
+            &repo_clone,
+            &engine_clone,
+            &github_clone,
+            &db_clone,
+            &docker_clone,
+        ).await {
+            tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
         }
     });
 

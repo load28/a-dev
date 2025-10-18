@@ -15,11 +15,19 @@ services:
       timeout: 5s
       retries: 5
 
+  # Worker image for Docker-based task execution
+  worker:
+    build: ./docker/worker
+    image: autodev-worker:latest
+    command: ["echo", "Worker image ready"]
+
   autodev:
     build: .
     depends_on:
       postgres:
         condition: service_healthy
+      worker:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://autodev:password@postgres:5432/autodev
       GITHUB_TOKEN: ${GITHUB_TOKEN}
@@ -29,6 +37,7 @@ services:
       - "3000:3000"
     volumes:
       - ./config.toml:/app/config.toml
+      - /var/run/docker.sock:/var/run/docker.sock  # Docker socket for worker execution
     command: serve --port 3000
 
 volumes:

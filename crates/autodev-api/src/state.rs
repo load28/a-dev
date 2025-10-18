@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use autodev_worker::DockerExecutor;
 
 #[derive(Clone)]
 pub struct ApiState {
@@ -6,4 +7,5 @@ pub struct ApiState {
     pub db: Option<Arc<autodev_db::Database>>,
     pub github_client: Arc<autodev_github::GitHubClient>,
     pub ai_agent: Arc<dyn autodev_ai::AIAgent>,
+    pub docker_executor: Arc<DockerExecutor>,
 }

@@ -223,12 +223,30 @@ pub async fn execute(
                 println!("Warning: No database configured. Tasks won't be persisted.");
             }
 
+            // Initialize Docker executor
+            let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY")
+                .expect("ANTHROPIC_API_KEY must be set");
+            let github_token = std::env::var("GITHUB_TOKEN")
+                .expect("GITHUB_TOKEN must be set");
+
+            let server_url = format!("http://localhost:{}", port);
+            let docker_executor = Arc::new(
+                autodev_worker::DockerExecutor::new(
+                    anthropic_api_key,
+                    github_token,
+                    Some(server_url),
+                ).await?
+            );
+
+            println!("✓ Docker executor initialized");
+
             // Create API state
             let api_state = autodev_api::state::ApiState {
                 engine,
                 db,
                 github_client,
                 ai_agent,
+                docker_executor,
             };
 
             // Create and run server
@@ -308,34 +326,45 @@ async fn execute_task(
     println!("Executing: {}", task.title);
     println!("{}", "=".repeat(60));
 
-    // Use shared executor module
-    let run_id = autodev_executor::execute_simple_task(
+    // Initialize Docker executor
+    let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY")
+        .expect("ANTHROPIC_API_KEY must be set");
+    let github_token = std::env::var("GITHUB_TOKEN")
+        .expect("GITHUB_TOKEN must be set");
+
+    let docker_executor = autodev_worker::DockerExecutor::new(
+        anthropic_api_key,
+        github_token,
+        None, // CLI doesn't need callback
+    ).await?;
+
+    // Use Docker-based executor module
+    autodev_executor::execute_simple_task_docker(
         task,
         repository,
         engine,
         github_client,
         db,
+        &docker_executor,
         parent_branch,
         composite_task_id,
+        false, // auto_approve - will be handled by composite task
     ).await?;
 
-    println!("✓ Workflow triggered: {}", run_id);
+    println!("✓ Task executed successfully");
     println!();
-    println!("🤖 Claude 4.5 Sonnet is now running in GitHub Actions (Docker + API).");
-    println!("   Check progress at: https://github.com/{}/actions", repository.full_name());
+    println!("🤖 Claude 4.5 Sonnet executed in local Docker container.");
     println!();
-    println!("💡 The workflow will:");
-    println!("   1. Checkout the repository");
-    println!("   2. Run Claude API in Docker container");
-    println!("   3. Automatically commit changes");
-    println!("   4. Create a pull request");
-    println!("   5. Notify AutoDev server on completion");
+    println!("💡 The execution:");
+    println!("   1. Cloned the repository");
+    println!("   2. Ran Claude Code CLI in Docker");
+    println!("   3. Committed changes");
+    println!("   4. Created a pull request");
     println!();
-    println!("✓ Task dispatched to GitHub Actions");
+    println!("✓ Task completed");
     println!("  Task ID: {}", task.id);
-    println!("  Workflow Run: {}", run_id);
 
-    Ok(run_id)
+    Ok(0) // Return 0 as placeholder (Docker execution doesn't have run_id)
 }
 
 async fn execute_composite_task(
@@ -352,13 +381,30 @@ async fn execute_composite_task(
     println!("Auto-approve: {}", composite_task.auto_approve);
     println!("{}", "=".repeat(60));
 
-    // Use shared executor module
-    autodev_executor::execute_composite_task(
+    // Initialize Docker executor for local task execution
+    let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY")
+        .expect("ANTHROPIC_API_KEY must be set");
+    let github_token = std::env::var("GITHUB_TOKEN")
+        .expect("GITHUB_TOKEN must be set");
+
+    let docker_executor = Arc::new(
+        autodev_worker::DockerExecutor::new(
+            anthropic_api_key,
+            github_token,
+            None, // CLI doesn't need callback
+        ).await?
+    );
+
+    println!("✓ Docker executor initialized");
+
+    // Use Docker-based executor module
+    autodev_executor::execute_composite_task_docker(
         composite_task,
         repository,
         engine,
         github_client,
         db,
+        &docker_executor,
     ).await?;
 
     println!("\n✓ Composite task completed: {}", composite_task.title);

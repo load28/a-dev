@@ -28,5 +28,6 @@ autodev-github = { workspace = true }
 autodev-ai = { workspace = true }
 autodev-db = { workspace = true }
 autodev-executor = { workspace = true }
+autodev-worker = { workspace = true }
 autodev-api = { workspace = true }
 axum = { workspace = true }
