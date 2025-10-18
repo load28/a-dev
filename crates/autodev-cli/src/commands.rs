@@ -1,6 +1,5 @@
 use anyhow::Result;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crate::cli::Commands;
 use autodev_core::{AutoDevEngine, CompositeTask, Task, TaskStatus};
@@ -339,99 +338,6 @@ async fn execute_task(
     Ok(run_id)
 }
 
-/// Wait for a task's workflow to complete and PR to merge
-async fn wait_for_task_completion(
-    task: &Task,
-    run_id: u64,
-    repository: &Repository,
-    github_client: &Arc<GitHubClient>,
-) -> Result<()> {
-    let task_branch = format!("autodev/{}", task.id);
-
-    print!("  {} ", task.title);
-    std::io::Write::flush(&mut std::io::stdout()).unwrap();
-
-    // Step 1: Wait for workflow to complete
-    let mut last_status = String::new();
-    loop {
-        tokio::time::sleep(Duration::from_secs(30)).await;
-
-        match github_client.get_workflow_run_status(repository, run_id).await {
-            Ok(status) => {
-                // Only print status changes
-                if status.status != last_status {
-                    print!(".");
-                    std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                    last_status = status.status.clone();
-                }
-
-                if let Some(conclusion) = &status.conclusion {
-                    match conclusion.as_str() {
-                        "success" => {
-                            print!(" ✓ workflow completed");
-                            std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                            break;
-                        }
-                        "failure" | "cancelled" | "timed_out" => {
-                            println!(" ✗ failed");
-                            return Err(anyhow::anyhow!(
-                                "Workflow failed with conclusion: {}",
-                                conclusion
-                            ));
-                        }
-                        _ => {
-                            // Still running or other state
-                        }
-                    }
-                }
-            }
-            Err(e) => {
-                tracing::warn!("Error checking workflow status: {}", e);
-                // Continue polling
-            }
-        }
-    }
-
-    // Step 2: Wait for PR to be created and merged
-    print!(" → waiting for PR merge");
-    std::io::Write::flush(&mut std::io::stdout()).unwrap();
-
-    let mut pr_number: Option<u64> = None;
-    for _ in 0..20 {  // Max 10 minutes (20 * 30s)
-        tokio::time::sleep(Duration::from_secs(30)).await;
-
-        // Find PR by branch
-        if pr_number.is_none() {
-            if let Ok(Some(num)) = github_client.find_pr_by_branch(repository, &task_branch).await {
-                pr_number = Some(num);
-                print!(" (PR #{})", num);
-                std::io::Write::flush(&mut std::io::stdout()).unwrap();
-            }
-        }
-
-        // Check if PR is merged
-        if let Some(num) = pr_number {
-            match github_client.is_pr_merged(repository, num).await {
-                Ok(true) => {
-                    println!(" → merged ✓");
-                    return Ok(());
-                }
-                Ok(false) => {
-                    print!(".");
-                    std::io::Write::flush(&mut std::io::stdout()).unwrap();
-                }
-                Err(e) => {
-                    tracing::warn!("Error checking PR merge status: {}", e);
-                }
-            }
-        }
-    }
-
-    // If we get here, PR didn't merge in time
-    println!(" ⚠ timeout");
-    Err(anyhow::anyhow!("PR did not merge within timeout period"))
-}
-
 async fn execute_composite_task(
     composite_task: &CompositeTask,
     repository: &Repository,
@@ -446,100 +352,14 @@ async fn execute_composite_task(
     println!("Auto-approve: {}", composite_task.auto_approve);
     println!("{}", "=".repeat(60));
 
-    // Create parent branch for composite task
-    let parent_branch = format!("autodev/{}", composite_task.id);
-    println!("\nCreating parent branch: {}", parent_branch);
-
-    if let Err(e) = github_client.create_branch(repository, &parent_branch, "main").await {
-        tracing::warn!("Failed to create parent branch (may already exist): {}", e);
-    } else {
-        println!("✓ Parent branch created: {}", parent_branch);
-    }
-
-    let batches = composite_task.get_parallel_batches();
-
-    for (i, batch) in batches.iter().enumerate() {
-        println!("\n{}", "=".repeat(60));
-        println!("Batch {}/{}: {} tasks", i + 1, batches.len(), batch.len());
-        println!("{}", "=".repeat(60));
-        let titles: Vec<&str> = batch.iter().map(|t| t.title.as_str()).collect();
-        for (j, title) in titles.iter().enumerate() {
-            println!("  {}. {}", j + 1, title);
-        }
-        println!();
-
-        // Step 1: Trigger all workflows in batch concurrently using executor module
-        println!("🚀 Triggering workflows...");
-        let mut handles = Vec::new();
-
-        for task in batch {
-            let task = task.clone();
-            let repository = repository.clone();
-            let engine = engine.clone();
-            let github_client = github_client.clone();
-            let db = db.clone();
-            let parent_branch_clone = parent_branch.clone();
-            let composite_id = composite_task.id.clone();
-
-            let handle = tokio::spawn(async move {
-                let run_id = autodev_executor::execute_simple_task(
-                    &task,
-                    &repository,
-                    &engine,
-                    &github_client,
-                    &db,
-                    Some(&parent_branch_clone),
-                    Some(&composite_id),
-                ).await?;
-                Ok::<(Task, u64), anyhow::Error>((task, run_id))
-            });
-
-            handles.push(handle);
-        }
-
-        // Collect all workflow run IDs
-        let mut workflow_runs = Vec::new();
-        for handle in handles {
-            let (task, run_id) = handle.await??;
-            workflow_runs.push((task, run_id));
-        }
-
-        println!("✓ All workflows triggered");
-        println!();
-
-        // Step 2: Wait for all workflows to complete and PRs to merge
-        println!("⏳ Waiting for workflows to complete and PRs to merge...");
-        for (task, run_id) in workflow_runs {
-            wait_for_task_completion(
-                &task,
-                run_id,
-                repository,
-                github_client,
-            ).await?;
-        }
-
-        println!();
-        println!("✓ Batch {}/{} fully completed and merged to parent branch", i + 1, batches.len());
-
-        // Wait for approval if not auto-approve and not last batch
-        if !composite_task.auto_approve && i < batches.len() - 1 {
-            println!();
-            println!("{}", "=".repeat(60));
-            println!("⚠️  Batch {} completed. Review changes before proceeding.", i + 1);
-            println!("   Parent branch: autodev/{}", composite_task.id);
-            println!("   Review at: https://github.com/{}/tree/autodev/{}",
-                repository.full_name(), composite_task.id);
-            println!("{}", "=".repeat(60));
-            println!();
-            println!("Press Enter to continue to Batch {}...", i + 2);
-            let mut input = String::new();
-            std::io::stdin().read_line(&mut input)?;
-        } else if i < batches.len() - 1 {
-            println!();
-            println!("🚀 Auto-approve enabled, proceeding to Batch {}...", i + 2);
-            tokio::time::sleep(Duration::from_secs(2)).await;
-        }
-    }
+    // Use shared executor module
+    autodev_executor::execute_composite_task(
+        composite_task,
+        repository,
+        engine,
+        github_client,
+        db,
+    ).await?;
 
     println!("\n✓ Composite task completed: {}", composite_task.title);
 

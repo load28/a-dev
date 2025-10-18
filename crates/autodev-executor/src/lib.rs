@@ -6,6 +6,88 @@ use autodev_core::{AutoDevEngine, CompositeTask, Task, TaskStatus};
 use autodev_github::{GitHubClient, Repository};
 use autodev_db::Database;
 
+/// Wait for a batch of tasks to complete (workflow + PR merge)
+async fn wait_for_batch_completion(
+    workflow_runs: Vec<(Task, u64)>,
+    repository: &Repository,
+    github_client: &Arc<GitHubClient>,
+) -> Result<()> {
+    for (task, run_id) in workflow_runs {
+        let task_branch = format!("autodev/{}", task.id);
+
+        tracing::info!("Waiting for task {} to complete...", task.title);
+
+        // Step 1: Wait for workflow to complete
+        loop {
+            tokio::time::sleep(Duration::from_secs(30)).await;
+
+            match github_client.get_workflow_run_status(repository, run_id).await {
+                Ok(status) => {
+                    if let Some(conclusion) = &status.conclusion {
+                        match conclusion.as_str() {
+                            "success" => {
+                                tracing::info!("Workflow completed for task: {}", task.title);
+                                break;
+                            }
+                            "failure" | "cancelled" | "timed_out" => {
+                                tracing::error!("Workflow failed for task {}: {}", task.title, conclusion);
+                                return Err(anyhow::anyhow!(
+                                    "Workflow failed with conclusion: {}",
+                                    conclusion
+                                ));
+                            }
+                            _ => {
+                                // Still running or other state
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!("Error checking workflow status: {}", e);
+                }
+            }
+        }
+
+        // Step 2: Wait for PR to be created and merged
+        tracing::info!("Waiting for PR merge for task: {}", task.title);
+        let mut pr_number: Option<u64> = None;
+
+        for _ in 0..20 {  // Max 10 minutes (20 * 30s)
+            tokio::time::sleep(Duration::from_secs(30)).await;
+
+            // Find PR by branch
+            if pr_number.is_none() {
+                if let Ok(Some(num)) = github_client.find_pr_by_branch(repository, &task_branch).await {
+                    pr_number = Some(num);
+                    tracing::info!("Found PR #{} for task: {}", num, task.title);
+                }
+            }
+
+            // Check if PR is merged
+            if let Some(num) = pr_number {
+                match github_client.is_pr_merged(repository, num).await {
+                    Ok(true) => {
+                        tracing::info!("PR #{} merged for task: {}", num, task.title);
+                        break;
+                    }
+                    Ok(false) => {
+                        // Still waiting for merge
+                    }
+                    Err(e) => {
+                        tracing::warn!("Error checking PR merge status: {}", e);
+                    }
+                }
+            }
+        }
+
+        if pr_number.is_none() {
+            return Err(anyhow::anyhow!("PR not found for task: {}", task.title));
+        }
+    }
+
+    Ok(())
+}
+
 /// Execute a simple task by triggering GitHub Actions workflow
 pub async fn execute_simple_task(
     task: &Task,
@@ -73,7 +155,6 @@ pub async fn execute_composite_task(
     engine: &Arc<AutoDevEngine>,
     github_client: &Arc<GitHubClient>,
     db: &Option<Arc<Database>>,
-    wait_for_completion: bool,
 ) -> Result<()> {
     tracing::info!(
         "Executing composite task: {} ({}) with {} subtasks",
@@ -113,7 +194,7 @@ pub async fn execute_composite_task(
             let composite_id = composite_task.id.clone();
 
             let handle = tokio::spawn(async move {
-                execute_simple_task(
+                let run_id = execute_simple_task(
                     &task,
                     &repository,
                     &engine,
@@ -121,44 +202,38 @@ pub async fn execute_composite_task(
                     &db,
                     Some(&parent_branch_clone),
                     Some(&composite_id),
-                ).await
+                ).await?;
+                Ok::<(Task, u64), anyhow::Error>((task, run_id))
             });
 
             handles.push(handle);
         }
 
         // Collect workflow run IDs
+        let mut workflow_runs = Vec::new();
         for handle in handles {
             match handle.await {
-                Ok(Ok(run_id)) => {
-                    tracing::info!("Workflow triggered successfully: {}", run_id);
+                Ok(Ok((task, run_id))) => {
+                    tracing::info!("Workflow triggered successfully for {}: {}", task.title, run_id);
+                    workflow_runs.push((task, run_id));
                 }
                 Ok(Err(e)) => {
                     tracing::error!("Failed to trigger workflow: {}", e);
+                    return Err(e);
                 }
                 Err(e) => {
                     tracing::error!("Task execution failed: {}", e);
+                    return Err(anyhow::anyhow!("Task execution failed: {}", e));
                 }
             }
         }
 
         tracing::info!("Batch {}/{} workflows triggered", i + 1, batches.len());
 
-        // If wait_for_completion is true (CLI mode), wait for completion
-        if wait_for_completion {
-            // Note: This is for CLI only. API doesn't wait.
-            // In CLI, we would wait for PR merges here, but API returns immediately
-            tokio::time::sleep(Duration::from_secs(2)).await;
-        }
+        // Wait for all workflows and PRs in this batch to complete
+        wait_for_batch_completion(workflow_runs, repository, github_client).await?;
 
-        // Wait for approval if not auto-approve and not last batch
-        if !composite_task.auto_approve && i < batches.len() - 1 {
-            tracing::info!("Batch {} completed. Waiting for approval...", i + 1);
-            if wait_for_completion {
-                // CLI mode: wait for user input
-                tokio::time::sleep(Duration::from_secs(5)).await;
-            }
-        }
+        tracing::info!("Batch {}/{} completed and merged", i + 1, batches.len());
     }
 
     tracing::info!("Composite task execution initiated: {}", composite_task.title);

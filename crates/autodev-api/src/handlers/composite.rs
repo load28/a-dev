@@ -81,7 +81,6 @@ pub async fn create_composite_task(
                             &engine_clone,
                             &github_clone,
                             &db_clone,
-                            false,  // API mode: don't wait for completion
                         ).await {
                             tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
                         }
