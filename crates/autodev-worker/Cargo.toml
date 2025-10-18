@@ -21,6 +21,10 @@ tracing-subscriber = { workspace = true }
 chrono = { workspace = true }
 dotenv = { workspace = true }
 
+# Docker API
+bollard = "0.16"
+futures-util = "0.3"
+
 # Internal
 autodev-core = { workspace = true }
 autodev-github = { workspace = true }

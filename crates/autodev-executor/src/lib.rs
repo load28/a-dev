@@ -5,6 +5,7 @@ use std::time::Duration;
 use autodev_core::{AutoDevEngine, CompositeTask, Task, TaskStatus};
 use autodev_github::{GitHubClient, Repository};
 use autodev_db::Database;
+use autodev_worker::DockerExecutor;
 
 /// Wait for a batch of tasks to complete (workflow + PR merge)
 async fn wait_for_batch_completion(
@@ -125,6 +126,125 @@ async fn wait_for_batch_completion(
             }
         }
     }
+
+    Ok(())
+}
+
+/// Execute a simple task using Docker worker (local execution)
+pub async fn execute_simple_task_docker(
+    task: &Task,
+    repository: &Repository,
+    engine: &Arc<AutoDevEngine>,
+    github_client: &Arc<GitHubClient>,
+    db: &Option<Arc<Database>>,
+    docker_executor: &DockerExecutor,
+    parent_branch: Option<&str>,
+    composite_task_id: Option<&str>,
+    auto_approve: bool,
+) -> Result<()> {
+    tracing::info!("Executing task {} via Docker worker: {}", task.id, task.title);
+
+    // Update status
+    engine.update_task_status(&task.id, TaskStatus::InProgress, None).await?;
+
+    // Determine base branch and target branch
+    let (base_branch, target_branch) = if let Some(parent) = parent_branch {
+        // Composite task: branch from parent, PR to parent
+        (format!("autodev/{}", task.id), parent.to_string())
+    } else {
+        // Standalone task: branch from main, PR to main
+        (format!("autodev/{}", task.id), "main".to_string())
+    };
+
+    // Create branch for this task
+    if let Err(e) = github_client.create_branch(repository, &base_branch, &target_branch).await {
+        tracing::warn!("Failed to create branch (may already exist): {}", e);
+    }
+
+    // Execute task in Docker container
+    let result = docker_executor.execute_task(
+        task,
+        repository,
+        &base_branch,
+        &target_branch,
+        composite_task_id,
+    ).await?;
+
+    // Save execution log
+    if let Some(db) = db {
+        db.add_execution_log(
+            &task.id,
+            "DOCKER_EXECUTED",
+            &format!("Docker worker executed task"),
+        ).await?;
+    }
+
+    if !result.success {
+        let error_msg = result.error.unwrap_or_else(|| "Unknown error".to_string());
+        engine.update_task_status(&task.id, TaskStatus::Failed, Some(error_msg.clone())).await?;
+
+        if let Some(db) = db {
+            db.add_execution_log(&task.id, "FAILED", &error_msg).await?;
+        }
+
+        return Err(anyhow::anyhow!("Task execution failed: {}", error_msg));
+    }
+
+    if !result.has_changes {
+        tracing::info!("Task {} completed with no changes", task.id);
+        engine.update_task_status(&task.id, TaskStatus::Completed, None).await?;
+
+        if let Some(db) = db {
+            db.add_execution_log(&task.id, "COMPLETED", "No changes to commit").await?;
+        }
+
+        return Ok(());
+    }
+
+    // PR was created
+    let pr_number = result.pr_number.ok_or_else(|| {
+        anyhow::anyhow!("PR creation succeeded but no PR number returned")
+    })?;
+
+    tracing::info!("PR #{} created for task: {}", pr_number, task.id);
+
+    // Auto-merge if enabled
+    if auto_approve {
+        tracing::info!("Auto-merging PR #{} for task: {}", pr_number, task.id);
+
+        match github_client.merge_pull_request(repository, pr_number).await {
+            Ok(_) => {
+                tracing::info!("✓ PR #{} auto-merged successfully for task: {}", pr_number, task.id);
+
+                if let Some(db) = db {
+                    db.add_execution_log(
+                        &task.id,
+                        "PR_MERGED",
+                        &format!("PR #{} auto-merged", pr_number),
+                    ).await?;
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to auto-merge PR #{}: {}", pr_number, e);
+                return Err(anyhow::anyhow!("Failed to auto-merge PR #{}: {}", pr_number, e));
+            }
+        }
+    } else {
+        tracing::info!("Auto-approve disabled, PR #{} requires manual merge", pr_number);
+
+        if let Some(db) = db {
+            db.add_execution_log(
+                &task.id,
+                "PR_CREATED",
+                &format!("PR #{} created, awaiting manual merge", pr_number),
+            ).await?;
+        }
+    }
+
+    // Update task status
+    engine.update_task_status(&task.id, TaskStatus::Completed, None).await?;
+
+    tracing::info!("✓ Task {} completed successfully", task.id);
 
     Ok(())
 }
@@ -278,5 +398,95 @@ pub async fn execute_composite_task(
     }
 
     tracing::info!("Composite task execution initiated: {}", composite_task.title);
+    Ok(())
+}
+
+/// Execute a composite task using Docker worker (local execution)
+pub async fn execute_composite_task_docker(
+    composite_task: &CompositeTask,
+    repository: &Repository,
+    engine: &Arc<AutoDevEngine>,
+    github_client: &Arc<GitHubClient>,
+    db: &Option<Arc<Database>>,
+    docker_executor: &Arc<DockerExecutor>,
+) -> Result<()> {
+    tracing::info!(
+        "Executing composite task via Docker: {} ({}) with {} subtasks",
+        composite_task.title,
+        composite_task.id,
+        composite_task.subtasks.len()
+    );
+
+    // Create parent branch for composite task
+    let parent_branch = format!("autodev/{}", composite_task.id);
+    tracing::info!("Creating parent branch: {}", parent_branch);
+
+    if let Err(e) = github_client.create_branch(repository, &parent_branch, "main").await {
+        tracing::warn!("Failed to create parent branch (may already exist): {}", e);
+    }
+
+    let batches = composite_task.get_parallel_batches();
+
+    for (i, batch) in batches.iter().enumerate() {
+        tracing::info!(
+            "Processing batch {}/{}: {} tasks",
+            i + 1,
+            batches.len(),
+            batch.len()
+        );
+
+        // Execute all tasks in batch concurrently
+        let mut handles = Vec::new();
+
+        for task in batch {
+            let task = task.clone();
+            let repository = repository.clone();
+            let engine = engine.clone();
+            let github_client = github_client.clone();
+            let db = db.clone();
+            let docker_executor = docker_executor.clone();
+            let parent_branch_clone = parent_branch.clone();
+            let composite_id = composite_task.id.clone();
+            let auto_approve = composite_task.auto_approve;
+
+            let handle = tokio::spawn(async move {
+                execute_simple_task_docker(
+                    &task,
+                    &repository,
+                    &engine,
+                    &github_client,
+                    &db,
+                    &docker_executor,
+                    Some(&parent_branch_clone),
+                    Some(&composite_id),
+                    auto_approve,
+                ).await?;
+                Ok::<(), anyhow::Error>(())
+            });
+
+            handles.push(handle);
+        }
+
+        // Wait for all tasks in batch to complete
+        for (idx, handle) in handles.into_iter().enumerate() {
+            match handle.await {
+                Ok(Ok(())) => {
+                    tracing::info!("Task {} in batch {} completed successfully", idx + 1, i + 1);
+                }
+                Ok(Err(e)) => {
+                    tracing::error!("Task {} in batch {} failed: {}", idx + 1, i + 1, e);
+                    return Err(e);
+                }
+                Err(e) => {
+                    tracing::error!("Task {} in batch {} panicked: {}", idx + 1, i + 1, e);
+                    return Err(anyhow::anyhow!("Task execution panicked: {}", e));
+                }
+            }
+        }
+
+        tracing::info!("Batch {}/{} completed", i + 1, batches.len());
+    }
+
+    tracing::info!("✓ Composite task completed: {}", composite_task.title);
     Ok(())
 }

@@ -21,6 +21,7 @@ tracing = { workspace = true }
 autodev-core = { workspace = true }
 autodev-github = { path = "../autodev-github" }
 autodev-db = { path = "../autodev-db" }
+autodev-worker = { path = "../autodev-worker" }
 
 [dev-dependencies]
 tokio-test = "0.4"
