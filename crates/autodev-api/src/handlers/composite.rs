@@ -31,7 +31,7 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-/// Create a composite task
+/// Create a composite task and execute it immediately
 pub async fn create_composite_task(
     State(state): State<ApiState>,
     Json(payload): Json<CreateCompositeTaskRequest>,
@@ -66,6 +66,26 @@ pub async fn create_composite_task(
                             tracing::error!("Failed to save composite task to database: {}", e);
                         }
                     }
+
+                    // Execute composite task immediately in background using executor module
+                    let composite_clone = composite_task.clone();
+                    let repo_clone = repo.clone();
+                    let engine_clone = state.engine.clone();
+                    let github_clone = state.github_client.clone();
+                    let db_clone = state.db.clone();
+
+                    tokio::spawn(async move {
+                        if let Err(e) = autodev_executor::execute_composite_task(
+                            &composite_clone,
+                            &repo_clone,
+                            &engine_clone,
+                            &github_clone,
+                            &db_clone,
+                            false,  // API mode: don't wait for completion
+                        ).await {
+                            tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
+                        }
+                    });
 
                     Ok(Json(composite_task_to_response(&composite_task)))
                 }

@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -16,6 +16,12 @@ export const Route = createFileRoute('/tasks/')({
 })
 
 function TaskList() {
+  const navigate = useNavigate()
+
+  const handleNewTask = () => {
+    navigate({ to: '/tasks/new' })
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -23,7 +29,7 @@ function TaskList() {
           <h1 className="text-3xl font-bold">태스크 목록</h1>
           <p className="text-muted-foreground">모든 태스크를 확인하고 관리합니다</p>
         </div>
-        <Button>새 태스크 생성</Button>
+        <Button onClick={handleNewTask}>새 태스크 생성</Button>
       </div>
 
       <Card>

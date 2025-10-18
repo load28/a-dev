@@ -7,6 +7,7 @@ use autodev_core::{AutoDevEngine, CompositeTask, Task, TaskStatus};
 use autodev_github::{GitHubClient, Repository};
 use autodev_ai::AIAgent;
 use autodev_db::Database;
+use autodev_executor;
 
 pub async fn execute(
     command: Commands,
@@ -308,43 +309,16 @@ async fn execute_task(
     println!("Executing: {}", task.title);
     println!("{}", "=".repeat(60));
 
-    // Update status
-    engine.update_task_status(&task.id, TaskStatus::InProgress, None).await?;
-
-    // Determine base branch and target branch
-    let (base_branch, target_branch) = if let Some(parent) = parent_branch {
-        // Composite task: branch from parent, PR to parent
-        (parent.to_string(), parent.to_string())
-    } else {
-        // Standalone task: branch from main, PR to main
-        ("main".to_string(), "main".to_string())
-    };
-
-    // Create branch for this task
-    let task_branch = format!("autodev/{}", task.id);
-    if let Err(e) = github_client.create_branch(repository, &task_branch, &base_branch).await {
-        tracing::warn!("Failed to create branch (may already exist): {}", e);
-    }
-
-    // Trigger GitHub workflow with new architecture inputs
-    let mut workflow_inputs = std::collections::HashMap::new();
-    workflow_inputs.insert("task_id".to_string(), task.id.clone());
-    workflow_inputs.insert("composite_task_id".to_string(),
-        composite_task_id.unwrap_or("standalone").to_string());
-    workflow_inputs.insert("task_title".to_string(), task.title.clone());
-    workflow_inputs.insert("prompt".to_string(), task.prompt.clone());
-    workflow_inputs.insert("base_branch".to_string(), task_branch.clone());
-    workflow_inputs.insert("target_branch".to_string(), target_branch.clone());
-
-    println!("Triggering GitHub Actions workflow...");
-    println!("  Task ID: {}", task.id);
-    println!("  Prompt: {}", task.prompt);
-    println!("  Repository: {}", repository.full_name());
-    println!("  Branch: {}", task_branch);
-
-    let run_id = github_client
-        .trigger_workflow(repository, "autodev.yml", workflow_inputs)
-        .await?;
+    // Use shared executor module
+    let run_id = autodev_executor::execute_simple_task(
+        task,
+        repository,
+        engine,
+        github_client,
+        db,
+        parent_branch,
+        composite_task_id,
+    ).await?;
 
     println!("✓ Workflow triggered: {}", run_id);
     println!();
@@ -352,25 +326,12 @@ async fn execute_task(
     println!("   Check progress at: https://github.com/{}/actions", repository.full_name());
     println!();
     println!("💡 The workflow will:");
-    println!("   1. Checkout the repository on branch: {}", task_branch);
+    println!("   1. Checkout the repository");
     println!("   2. Run Claude API in Docker container");
     println!("   3. Automatically commit changes");
-    println!("   4. Create a pull request to main");
+    println!("   4. Create a pull request");
     println!("   5. Notify AutoDev server on completion");
     println!();
-
-    // Update status (workflow is now responsible for the rest)
-    engine.update_task_status(&task.id, TaskStatus::InProgress, None).await?;
-
-    // Save execution log
-    if let Some(db) = db {
-        db.add_execution_log(
-            &task.id,
-            "WORKFLOW_TRIGGERED",
-            &format!("GitHub Actions workflow triggered: {}", run_id),
-        ).await?;
-    }
-
     println!("✓ Task dispatched to GitHub Actions");
     println!("  Task ID: {}", task.id);
     println!("  Workflow Run: {}", run_id);
@@ -507,7 +468,7 @@ async fn execute_composite_task(
         }
         println!();
 
-        // Step 1: Trigger all workflows in batch concurrently
+        // Step 1: Trigger all workflows in batch concurrently using executor module
         println!("🚀 Triggering workflows...");
         let mut handles = Vec::new();
 
@@ -516,18 +477,16 @@ async fn execute_composite_task(
             let repository = repository.clone();
             let engine = engine.clone();
             let github_client = github_client.clone();
-            let ai_agent = ai_agent.clone();
             let db = db.clone();
             let parent_branch_clone = parent_branch.clone();
             let composite_id = composite_task.id.clone();
 
             let handle = tokio::spawn(async move {
-                let run_id = execute_task(
+                let run_id = autodev_executor::execute_simple_task(
                     &task,
                     &repository,
                     &engine,
                     &github_client,
-                    &ai_agent,
                     &db,
                     Some(&parent_branch_clone),
                     Some(&composite_id),

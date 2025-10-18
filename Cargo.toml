@@ -5,6 +5,7 @@ members = [
     "crates/autodev-github",
     "crates/autodev-ai",
     "crates/autodev-db",
+    "crates/autodev-executor",
     "crates/autodev-api",
     "crates/autodev-cli",
     "crates/autodev-worker",
@@ -72,6 +73,7 @@ autodev-core = { path = "crates/autodev-core" }
 autodev-github = { path = "crates/autodev-github" }
 autodev-ai = { path = "crates/autodev-ai" }
 autodev-db = { path = "crates/autodev-db" }
+autodev-executor = { path = "crates/autodev-executor" }
 autodev-api = { path = "crates/autodev-api" }
 
 [profile.dev]

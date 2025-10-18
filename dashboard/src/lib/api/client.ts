@@ -25,6 +25,22 @@ export interface CreateTaskRequest {
   prompt: string
 }
 
+export interface CreateCompositeTaskRequest {
+  repository_owner: string
+  repository_name: string
+  title: string
+  description: string
+  composite_prompt: string
+  auto_approve: boolean
+}
+
+export interface CompositeTask {
+  id: string
+  title: string
+  subtasks: Task[]
+  batches: string[][]
+}
+
 export interface Stats {
   total_tasks: number
   pending_tasks: number
@@ -74,6 +90,24 @@ class ApiClient {
 
   async executeTask(taskId: string): Promise<void> {
     return this.request<void>(`/tasks/${taskId}/execute`, {
+      method: 'POST',
+    })
+  }
+
+  // Composite task endpoints
+  async createCompositeTask(data: CreateCompositeTaskRequest): Promise<CompositeTask> {
+    return this.request<CompositeTask>('/composite-tasks', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getCompositeTask(taskId: string): Promise<CompositeTask> {
+    return this.request<CompositeTask>(`/composite-tasks/${taskId}`)
+  }
+
+  async executeCompositeTask(taskId: string): Promise<CompositeTask> {
+    return this.request<CompositeTask>(`/composite-tasks/${taskId}/execute`, {
       method: 'POST',
     })
   }

@@ -217,6 +217,7 @@ dependencies = [
  "autodev-ai",
  "autodev-core",
  "autodev-db",
+ "autodev-executor",
  "autodev-github",
  "axum",
  "chrono",
@@ -244,6 +245,7 @@ dependencies = [
  "autodev-api",
  "autodev-core",
  "autodev-db",
+ "autodev-executor",
  "autodev-github",
  "axum",
  "clap",
@@ -285,6 +287,25 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "autodev-executor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "autodev-core",
+ "autodev-db",
+ "autodev-github",
+ "chrono",
+ "serde",
+ "serde_json",
  "thiserror 1.0.69",
  "tokio",
  "tokio-test",

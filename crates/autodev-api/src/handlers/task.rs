@@ -32,7 +32,7 @@ pub struct ErrorResponse {
     pub error: String,
 }
 
-/// Create a simple task
+/// Create a simple task and execute it immediately
 pub async fn create_task(
     State(state): State<ApiState>,
     Json(payload): Json<CreateTaskRequest>,
@@ -54,6 +54,27 @@ pub async fn create_task(
                     tracing::error!("Failed to save task to database: {}", e);
                 }
             }
+
+            // Execute task immediately in background using executor module
+            let task_clone = task.clone();
+            let repo_clone = repo.clone();
+            let engine_clone = state.engine.clone();
+            let github_clone = state.github_client.clone();
+            let db_clone = state.db.clone();
+
+            tokio::spawn(async move {
+                if let Err(e) = autodev_executor::execute_simple_task(
+                    &task_clone,
+                    &repo_clone,
+                    &engine_clone,
+                    &github_clone,
+                    &db_clone,
+                    None,  // No parent branch for simple tasks
+                    None,  // No composite task ID
+                ).await {
+                    tracing::error!("Failed to execute task {}: {}", task_clone.id, e);
+                }
+            });
 
             Ok(Json(task_to_response(&task)))
         }

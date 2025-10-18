@@ -1,5 +1,5 @@
 [package]
-name = "autodev-core"
+name = "autodev-executor"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -16,8 +16,11 @@ thiserror = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-petgraph = { workspace = true }
 
+# Internal crates
+autodev-core = { workspace = true }
+autodev-github = { path = "../autodev-github" }
+autodev-db = { path = "../autodev-db" }
 
 [dev-dependencies]
 tokio-test = "0.4"

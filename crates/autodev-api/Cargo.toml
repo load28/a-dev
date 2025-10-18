@@ -19,6 +19,7 @@ autodev-core = { workspace = true }
 autodev-ai = { workspace = true }
 autodev-db = { workspace = true }
 autodev-github = { workspace = true }
+autodev-executor = { workspace = true }
 
 # Async
 tokio = { workspace = true }
