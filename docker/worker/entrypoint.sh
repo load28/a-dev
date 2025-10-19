@@ -128,11 +128,11 @@ echo "[$(date -Iseconds)] Prompt: ${TASK_PROMPT}"
 echo ""
 
 # Claude Code 실행 (출력을 별도 로그 파일에도 저장)
+# No --max-turns limit to allow completion of complex tasks
 claude \
   --dangerously-skip-permissions \
   --allowedTools "Bash,Read,Write,Edit,Glob,Grep" \
   --model sonnet \
-  --max-turns 10 \
   --output-format text \
   --append-system-prompt "Make autonomous decisions and modify files directly without asking questions. Complete the task in minimal steps." \
   "${TASK_PROMPT}" 2>&1 | tee /output/claude.log
