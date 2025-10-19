@@ -24,7 +24,7 @@ pub struct TaskResult {
 
 pub struct DockerExecutor {
     docker: Docker,
-    anthropic_api_key: String,
+    anthropic_api_key: Option<String>,
     github_token: String,
     autodev_server_url: Option<String>,
     workspace_dir: PathBuf,
@@ -32,7 +32,7 @@ pub struct DockerExecutor {
 
 impl DockerExecutor {
     pub async fn new(
-        anthropic_api_key: String,
+        anthropic_api_key: Option<String>,
         github_token: String,
         autodev_server_url: Option<String>,
         workspace_dir: PathBuf,
@@ -76,8 +76,7 @@ impl DockerExecutor {
         tracing::debug!("Created output directory: {:?}", output_dir);
 
         // Build environment variables
-        let env_strings = vec![
-            format!("ANTHROPIC_API_KEY={}", self.anthropic_api_key),
+        let mut env_strings = vec![
             format!("GITHUB_TOKEN={}", self.github_token),
             format!("TASK_ID={}", task.id),
             format!("TASK_TITLE={}", task.title),
@@ -87,10 +86,21 @@ impl DockerExecutor {
             format!("BASE_BRANCH={}", base_branch),
             format!("TARGET_BRANCH={}", target_branch),
             format!("COMPOSITE_TASK_ID={}", composite_task_id.unwrap_or("standalone")),
-            self.autodev_server_url.as_ref()
-                .map(|url| format!("AUTODEV_SERVER_URL={}", url))
-                .unwrap_or_else(|| "".to_string()),
         ];
+
+        // Use Claude subscription OAuth token for Docker executor
+        if let Ok(oauth_token) = std::env::var("CLAUDE_CODE_OAUTH_TOKEN") {
+            tracing::info!("Using Claude subscription OAuth token for authentication");
+            env_strings.push(format!("CLAUDE_CODE_OAUTH_TOKEN={}", oauth_token));
+        } else {
+            tracing::warn!("CLAUDE_CODE_OAUTH_TOKEN not set - Claude Code may fail to authenticate");
+            tracing::warn!("Run 'claude setup-token' to generate a long-lived OAuth token");
+        }
+
+        // Add server URL if provided
+        if let Some(ref url) = self.autodev_server_url {
+            env_strings.push(format!("AUTODEV_SERVER_URL={}", url));
+        }
 
         let env: Vec<&str> = env_strings.iter().map(|s| s.as_str()).collect();
 
@@ -100,13 +110,37 @@ impl DockerExecutor {
             .ok_or_else(|| anyhow!("Invalid output directory path"))?
             .to_string();
 
+        // Build mounts list
+        let mut mounts = vec![Mount {
+            target: Some("/output".to_string()),
+            source: Some(output_dir_str.clone()),
+            typ: Some(MountTypeEnum::BIND),
+            ..Default::default()
+        }];
+
+        // Always mount Claude subscription auth directory (required for Docker executor)
+        if let Ok(home_dir) = std::env::var("HOME") {
+            let claude_dir = format!("{}/.claude", home_dir);
+            if std::path::Path::new(&claude_dir).exists() {
+                tracing::info!("Mounting Claude subscription auth directory: {}", claude_dir);
+                mounts.push(Mount {
+                    target: Some("/home/node/.claude".to_string()),
+                    source: Some(claude_dir),
+                    typ: Some(MountTypeEnum::BIND),
+                    read_only: Some(false), // Claude Code needs write access for debug logs, history, etc.
+                    ..Default::default()
+                });
+            } else {
+                tracing::error!("Claude directory not found at {}. Docker executor requires Claude subscription auth.", claude_dir);
+                return Err(anyhow!("Claude subscription auth directory not found. Please run 'claude login' first."));
+            }
+        } else {
+            tracing::error!("HOME environment variable not set");
+            return Err(anyhow!("HOME environment variable not set"));
+        }
+
         let host_config = HostConfig {
-            mounts: Some(vec![Mount {
-                target: Some("/output".to_string()),
-                source: Some(output_dir_str.clone()),
-                typ: Some(MountTypeEnum::BIND),
-                ..Default::default()
-            }]),
+            mounts: Some(mounts),
             auto_remove: Some(true),
             ..Default::default()
         };

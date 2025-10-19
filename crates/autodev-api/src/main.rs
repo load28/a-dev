@@ -82,8 +82,14 @@ async fn main() -> Result<()> {
         let workspace_dir = env::var("AUTODEV_WORKSPACE_DIR")
             .unwrap_or_else(|_| "/tmp/autodev-workspace".to_string());
 
-        let anthropic_api_key = env::var("ANTHROPIC_API_KEY")
-            .expect("ANTHROPIC_API_KEY must be set for local execution");
+        // API key is optional - will fall back to Claude subscription
+        let anthropic_api_key = env::var("ANTHROPIC_API_KEY").ok();
+
+        if anthropic_api_key.is_some() {
+            tracing::info!("Using ANTHROPIC_API_KEY for authentication");
+        } else {
+            tracing::info!("No API key provided - will use Claude subscription (ensure you've run 'claude login')");
+        }
 
         let github_token = env::var("GITHUB_TOKEN")
             .expect("GITHUB_TOKEN must be set for local execution");

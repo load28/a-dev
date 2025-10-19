@@ -57,8 +57,7 @@ EOF
 # Trap errors
 trap 'send_error_callback "Script failed at line $LINENO"' ERR
 
-# 환경 변수 검증
-: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY is required}"
+# 환경 변수 검증 (ANTHROPIC_API_KEY는 선택사항)
 : "${GITHUB_TOKEN:?GITHUB_TOKEN is required}"
 : "${TASK_ID:?TASK_ID is required}"
 : "${TASK_TITLE:?TASK_TITLE is required}"
@@ -71,6 +70,27 @@ trap 'send_error_callback "Script failed at line $LINENO"' ERR
 
 # Optional: AutoDev server callback URL
 AUTODEV_SERVER_URL="${AUTODEV_SERVER_URL:-}"
+
+# 인증 방식 확인 및 검증
+echo "[$(date -Iseconds)] =========================================="
+echo "[$(date -Iseconds)] Checking authentication method..."
+echo "[$(date -Iseconds)] =========================================="
+
+if [ -n "$ANTHROPIC_API_KEY" ]; then
+  echo "[$(date -Iseconds)] ✓ Using API key authentication"
+elif [ -d "/home/node/.claude" ] && [ -n "$(ls -A /home/node/.claude 2>/dev/null)" ]; then
+  echo "[$(date -Iseconds)] ✓ Using Claude subscription authentication"
+  echo "[$(date -Iseconds)]   Claude config directory mounted from host"
+else
+  echo "[$(date -Iseconds)] ✗ ERROR: No authentication method available"
+  echo "[$(date -Iseconds)]   Please provide either:"
+  echo "[$(date -Iseconds)]   1. ANTHROPIC_API_KEY environment variable, or"
+  echo "[$(date -Iseconds)]   2. Authenticate on host with: claude login"
+  send_error_callback "No ANTHROPIC_API_KEY provided and no Claude subscription found"
+fi
+
+echo "[$(date -Iseconds)] =========================================="
+echo ""
 
 echo "============================================================"
 echo "AutoDev Docker Worker"

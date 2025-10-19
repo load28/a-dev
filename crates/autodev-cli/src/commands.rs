@@ -232,8 +232,14 @@ pub async fn execute(
                 let workspace_dir = std::env::var("AUTODEV_WORKSPACE_DIR")
                     .unwrap_or_else(|_| "/tmp/autodev-workspace".to_string());
 
-                let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY")
-                    .expect("ANTHROPIC_API_KEY must be set for local execution");
+                // API key is optional - will fall back to Claude subscription
+                let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY").ok();
+
+                if anthropic_api_key.is_some() {
+                    println!("Using ANTHROPIC_API_KEY for authentication");
+                } else {
+                    println!("No API key provided - will use Claude subscription (ensure you've run 'claude login')");
+                }
 
                 let github_token = std::env::var("GITHUB_TOKEN")
                     .expect("GITHUB_TOKEN must be set for local execution");
@@ -405,8 +411,8 @@ async fn execute_composite_task(
         let workspace_dir = std::env::var("AUTODEV_WORKSPACE_DIR")
             .unwrap_or_else(|_| "/tmp/autodev-workspace".to_string());
 
-        let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY")
-            .expect("ANTHROPIC_API_KEY must be set for local execution");
+        // API key is optional - will fall back to Claude subscription
+        let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY").ok();
 
         let github_token = std::env::var("GITHUB_TOKEN")
             .expect("GITHUB_TOKEN must be set for local execution");
