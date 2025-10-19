@@ -72,7 +72,15 @@ impl DockerAIExecutor {
 
         if json_mode {
             cmd.push("--output-format".to_string());
-            cmd.push("json".to_string());
+            cmd.push("json".to_string()); // CLI 래퍼를 JSON으로
+
+            // Worker 방식: append-system-prompt로 순수 JSON 응답 강제
+            cmd.push("--append-system-prompt".to_string());
+            cmd.push(
+                "CRITICAL: You must respond with ONLY a valid JSON object. \
+                No explanations, no markdown code blocks (```json), no additional text before or after. \
+                Output the raw JSON object directly starting with { and ending with }.".to_string()
+            );
         }
 
         cmd.push(full_prompt);
@@ -189,14 +197,27 @@ impl DockerAIExecutor {
 
             tracing::debug!("Extracted result from Claude CLI wrapper: {} chars", parsed.result.len());
 
-            // 마크다운 코드 블록 제거
+            // 마크다운 코드 블록 제거 (방어적)
             let clean_result = strip_markdown_code_block(&parsed.result);
 
             if clean_result != parsed.result.trim() {
                 tracing::debug!("Stripped markdown code block from result");
             }
 
-            tracing::debug!("Cleaned result: {}", clean_result);
+            // JSON 유효성 검증
+            serde_json::from_str::<serde_json::Value>(clean_result)
+                .map_err(|e| {
+                    tracing::error!("❌ Invalid JSON in result field: {}", e);
+                    tracing::error!("Raw result (first 500 chars): {}",
+                        &parsed.result.chars().take(500).collect::<String>());
+                    tracing::error!("Cleaned result: {}", clean_result);
+                    crate::Error::ParseError(format!(
+                        "Claude returned invalid JSON despite prompt: {}",
+                        e
+                    ))
+                })?;
+
+            tracing::debug!("✓ Valid JSON extracted: {} chars", clean_result.len());
             Ok(clean_result.to_string())
         } else {
             Ok(output.trim().to_string())
