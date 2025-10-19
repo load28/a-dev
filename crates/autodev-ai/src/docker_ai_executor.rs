@@ -7,6 +7,7 @@ use autodev_core::Task;
 use bollard::container::{Config, CreateContainerOptions, LogsOptions, RemoveContainerOptions, WaitContainerOptions};
 use bollard::Docker;
 use futures_util::StreamExt;
+use serde::Deserialize;
 
 /// Docker 컨테이너 기반 AI Executor
 /// Claude Code CLI를 Docker 컨테이너에서 실행하여 OAuth 토큰으로 인증
@@ -152,7 +153,24 @@ impl DockerAIExecutor {
 
         tracing::debug!("Container removed: {}", container.id);
 
-        Ok(output.trim().to_string())
+        // JSON 모드일 때 Claude CLI 래퍼 JSON에서 실제 응답 추출
+        if json_mode {
+            #[derive(Deserialize)]
+            struct ClaudeCliResponse {
+                result: String,
+            }
+
+            let parsed: ClaudeCliResponse = serde_json::from_str(output.trim())
+                .map_err(|e| {
+                    tracing::error!("Failed to parse Claude CLI JSON wrapper: {}\nRaw output: {}", e, output);
+                    crate::Error::ParseError(format!("Failed to parse Claude CLI response: {}", e))
+                })?;
+
+            tracing::debug!("Extracted result from Claude CLI wrapper: {} chars", parsed.result.len());
+            Ok(parsed.result)
+        } else {
+            Ok(output.trim().to_string())
+        }
     }
 }
 
