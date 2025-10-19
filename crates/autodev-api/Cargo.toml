@@ -20,6 +20,7 @@ autodev-ai = { workspace = true }
 autodev-db = { workspace = true }
 autodev-github = { workspace = true }
 autodev-executor = { workspace = true }
+autodev-local-executor = { path = "../autodev-local-executor" }
 
 # Async
 tokio = { workspace = true }

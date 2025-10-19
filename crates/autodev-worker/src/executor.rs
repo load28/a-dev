@@ -1,17 +1,22 @@
 use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::path::PathBuf;
 
 use autodev_core::{AutoDevEngine, Task, TaskStatus};
 use autodev_github::{GitHubClient, Repository};
 use autodev_ai::AIAgent;
 use autodev_db::Database;
+use autodev_local_executor::DockerExecutor;
 
 pub struct TaskExecutor {
     engine: Arc<AutoDevEngine>,
     github_client: Arc<GitHubClient>,
     ai_agent: Arc<dyn AIAgent>,
     db: Option<Arc<Database>>,
+    local_executor: Option<Arc<DockerExecutor>>,
+    use_local_executor: bool,
+    autodev_server_url: String,
 }
 
 impl TaskExecutor {
@@ -21,11 +26,31 @@ impl TaskExecutor {
         ai_agent: Arc<dyn AIAgent>,
         db: Option<Arc<Database>>,
     ) -> Self {
+        // Check if local executor should be used
+        let use_local_executor = std::env::var("AUTODEV_LOCAL_EXECUTOR")
+            .unwrap_or_else(|_| "false".to_string())
+            .to_lowercase() == "true";
+
+        let autodev_server_url = std::env::var("AUTODEV_SERVER_URL")
+            .unwrap_or_else(|_| "http://localhost:3000".to_string());
+
+        let local_executor = if use_local_executor {
+            // DockerExecutor::new is async, so we can't call it here in sync context
+            // This will be None for now, worker will use GitHub Actions mode
+            tracing::warn!("Local executor not supported in worker mode, use API server instead");
+            None
+        } else {
+            None
+        };
+
         Self {
             engine,
             github_client,
             ai_agent,
             db,
+            local_executor,
+            use_local_executor,
+            autodev_server_url,
         }
     }
 
@@ -48,6 +73,34 @@ impl TaskExecutor {
         let (owner, name) = self.get_repository_info(&task.id).await?;
         let repository = Repository::new(owner, name);
 
+        // Choose execution mode: Local Docker or GitHub Actions
+        if self.use_local_executor && self.local_executor.is_some() {
+            tracing::info!("Using LOCAL EXECUTOR mode");
+            self.execute_task_local(task, &repository, start_time).await
+        } else {
+            tracing::info!("Using GITHUB ACTIONS mode");
+            self.execute_task_github_actions(task, &repository, start_time).await
+        }
+    }
+
+    /// Execute task using Local Docker Executor
+    /// NOTE: Worker doesn't use local executor anymore, use API server instead
+    async fn execute_task_local(
+        &self,
+        _task: &Task,
+        _repository: &Repository,
+        _start_time: std::time::Instant,
+    ) -> Result<()> {
+        anyhow::bail!("Local executor not supported in worker mode. Use API server for Docker execution.")
+    }
+
+    /// Execute task using GitHub Actions (existing behavior)
+    async fn execute_task_github_actions(
+        &self,
+        task: &Task,
+        repository: &Repository,
+        start_time: std::time::Instant,
+    ) -> Result<()> {
         // Execute task with AI agent
         let result = self.ai_agent
             .execute_task(task, &format!("/workspace/{}", repository.full_name()))

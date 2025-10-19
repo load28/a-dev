@@ -67,22 +67,42 @@ pub async fn create_composite_task(
                         }
                     }
 
-                    // Execute composite task immediately in background using executor module
+                    // Execute composite task immediately in background
                     let composite_clone = composite_task.clone();
                     let repo_clone = repo.clone();
                     let engine_clone = state.engine.clone();
                     let github_clone = state.github_client.clone();
                     let db_clone = state.db.clone();
+                    let use_local = state.use_local_executor;
+                    let docker_exec = state.docker_executor.clone();
 
                     tokio::spawn(async move {
-                        if let Err(e) = autodev_executor::execute_composite_task(
-                            &composite_clone,
-                            &repo_clone,
-                            &engine_clone,
-                            &github_clone,
-                            &db_clone,
-                        ).await {
-                            tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
+                        if use_local && docker_exec.is_some() {
+                            // Use Docker-based local execution
+                            tracing::info!("🐳 Executing composite task with Docker executor");
+                            let executor = docker_exec.unwrap();
+                            if let Err(e) = autodev_executor::execute_composite_task_docker(
+                                &composite_clone,
+                                &repo_clone,
+                                &executor,
+                                &engine_clone,
+                                &github_clone,
+                                &db_clone,
+                            ).await {
+                                tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
+                            }
+                        } else {
+                            // Use GitHub Actions execution
+                            tracing::info!("☁️  Executing composite task with GitHub Actions");
+                            if let Err(e) = autodev_executor::execute_composite_task(
+                                &composite_clone,
+                                &repo_clone,
+                                &engine_clone,
+                                &github_clone,
+                                &db_clone,
+                            ).await {
+                                tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
+                            }
                         }
                     });
 

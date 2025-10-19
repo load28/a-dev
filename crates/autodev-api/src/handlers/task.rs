@@ -352,79 +352,118 @@ pub async fn orchestrate_task(
         payload.repository_name.clone(),
     );
 
-    // Create a parent branch for this composite task
-    let parent_branch = format!("autodev/{}", composite_task.id);
+    // Check execution mode: Docker local or GitHub Actions
+    if state.use_local_executor && state.docker_executor.is_some() {
+        // Use Docker-based local execution
+        tracing::info!("🐳 Orchestrating with Docker executor (local execution)");
 
-    if let Err(e) = state
-        .github_client
-        .create_branch(&repo, &parent_branch, &payload.base_branch)
-        .await
-    {
-        tracing::warn!("Failed to create parent branch (may already exist): {}", e);
-    }
+        let composite_clone = composite_task.clone();
+        let repo_clone = repo.clone();
+        let engine_clone = state.engine.clone();
+        let github_clone = state.github_client.clone();
+        let db_clone = state.db.clone();
+        let docker_exec = state.docker_executor.clone().unwrap();
 
-    // Get the first batch of ready tasks
-    let batches = composite_task.get_parallel_batches();
-    let first_batch = batches.first().cloned().unwrap_or_default();
+        // Execute in background
+        tokio::spawn(async move {
+            if let Err(e) = autodev_executor::execute_composite_task_docker(
+                &composite_clone,
+                &repo_clone,
+                &docker_exec,
+                &engine_clone,
+                &github_clone,
+                &db_clone,
+            ).await {
+                tracing::error!("Failed to execute composite task {}: {}", composite_clone.id, e);
+            }
+        });
 
-    let mut started_tasks = Vec::new();
+        Ok(Json(OrchestrateResponse {
+            composite_task_id: composite_task.id.clone(),
+            started_subtasks: composite_task.subtasks.iter().map(|t| t.id.clone()).collect(),
+            message: format!(
+                "Started Docker local execution with {} subtasks",
+                composite_task.subtasks.len()
+            ),
+        }))
+    } else {
+        // Use GitHub Actions execution (existing behavior)
+        tracing::info!("☁️  Orchestrating with GitHub Actions");
 
-    // Dispatch workflow for each task in the first batch
-    for task in &first_batch {
-        let task_branch = format!("autodev/{}/subtask-{}", composite_task.id, task.id);
+        // Create a parent branch for this composite task
+        let parent_branch = format!("autodev/{}", composite_task.id);
 
-        // Create branch for this subtask
         if let Err(e) = state
             .github_client
-            .create_branch(&repo, &task_branch, &parent_branch)
+            .create_branch(&repo, &parent_branch, &payload.base_branch)
             .await
         {
-            tracing::error!("Failed to create branch for subtask {}: {}", task.id, e);
-            continue;
+            tracing::warn!("Failed to create parent branch (may already exist): {}", e);
         }
 
-        // Dispatch workflow
-        let mut inputs = std::collections::HashMap::new();
-        inputs.insert("task_id".to_string(), task.id.clone());
-        inputs.insert("composite_task_id".to_string(), composite_task.id.clone());
-        inputs.insert("task_title".to_string(), task.title.clone());
-        inputs.insert("prompt".to_string(), task.prompt.clone());
-        inputs.insert("base_branch".to_string(), task_branch.clone());
-        inputs.insert("target_branch".to_string(), parent_branch.clone());
+        // Get the first batch of ready tasks
+        let batches = composite_task.get_parallel_batches();
+        let first_batch = batches.first().cloned().unwrap_or_default();
 
-        match state
-            .github_client
-            .trigger_workflow(&repo, "autodev.yml", inputs)
-            .await
-        {
-            Ok(workflow_run_id) => {
-                tracing::info!(
-                    "Started workflow {} for subtask {}",
-                    workflow_run_id,
-                    task.id
-                );
-                started_tasks.push(task.id.clone());
+        let mut started_tasks = Vec::new();
 
-                // Update task status
-                let _ = state
-                    .engine
-                    .update_task_status(&task.id, autodev_core::TaskStatus::InProgress, None)
-                    .await;
+        // Dispatch workflow for each task in the first batch
+        for task in &first_batch {
+            let task_branch = format!("autodev/{}/subtask-{}", composite_task.id, task.id);
+
+            // Create branch for this subtask
+            if let Err(e) = state
+                .github_client
+                .create_branch(&repo, &task_branch, &parent_branch)
+                .await
+            {
+                tracing::error!("Failed to create branch for subtask {}: {}", task.id, e);
+                continue;
             }
-            Err(e) => {
-                tracing::error!("Failed to trigger workflow for subtask {}: {}", task.id, e);
+
+            // Dispatch workflow
+            let mut inputs = std::collections::HashMap::new();
+            inputs.insert("task_id".to_string(), task.id.clone());
+            inputs.insert("composite_task_id".to_string(), composite_task.id.clone());
+            inputs.insert("task_title".to_string(), task.title.clone());
+            inputs.insert("prompt".to_string(), task.prompt.clone());
+            inputs.insert("base_branch".to_string(), task_branch.clone());
+            inputs.insert("target_branch".to_string(), parent_branch.clone());
+
+            match state
+                .github_client
+                .trigger_workflow(&repo, "autodev.yml", inputs)
+                .await
+            {
+                Ok(workflow_run_id) => {
+                    tracing::info!(
+                        "Started workflow {} for subtask {}",
+                        workflow_run_id,
+                        task.id
+                    );
+                    started_tasks.push(task.id.clone());
+
+                    // Update task status
+                    let _ = state
+                        .engine
+                        .update_task_status(&task.id, autodev_core::TaskStatus::InProgress, None)
+                        .await;
+                }
+                Err(e) => {
+                    tracing::error!("Failed to trigger workflow for subtask {}: {}", task.id, e);
+                }
             }
         }
+
+        Ok(Json(OrchestrateResponse {
+            composite_task_id: composite_task.id,
+            started_subtasks: started_tasks.clone(),
+            message: format!(
+                "Started {} subtasks from the first parallel batch",
+                started_tasks.len()
+            ),
+        }))
     }
-
-    Ok(Json(OrchestrateResponse {
-        composite_task_id: composite_task.id,
-        started_subtasks: started_tasks.clone(),
-        message: format!(
-            "Started {} subtasks from the first parallel batch",
-            started_tasks.len()
-        ),
-    }))
 }
 
 pub fn task_to_response(task: &autodev_core::Task) -> TaskResponse {

@@ -1,0 +1,12 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store

@@ -9,6 +9,7 @@ members = [
     "crates/autodev-api",
     "crates/autodev-cli",
     "crates/autodev-worker",
+    "crates/autodev-local-executor",
 ]
 
 [workspace.package]
@@ -75,6 +76,7 @@ autodev-ai = { path = "crates/autodev-ai" }
 autodev-db = { path = "crates/autodev-db" }
 autodev-executor = { path = "crates/autodev-executor" }
 autodev-api = { path = "crates/autodev-api" }
+autodev-local-executor = { path = "crates/autodev-local-executor" }
 
 [profile.dev]
 opt-level = 0

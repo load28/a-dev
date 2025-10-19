@@ -6,4 +6,6 @@ pub struct ApiState {
     pub db: Option<Arc<autodev_db::Database>>,
     pub github_client: Arc<autodev_github::GitHubClient>,
     pub ai_agent: Arc<dyn autodev_ai::AIAgent>,
+    pub docker_executor: Option<Arc<autodev_local_executor::DockerExecutor>>,
+    pub use_local_executor: bool,
 }

@@ -29,4 +29,5 @@ autodev-ai = { workspace = true }
 autodev-db = { workspace = true }
 autodev-executor = { workspace = true }
 autodev-api = { workspace = true }
+autodev-local-executor = { path = "../autodev-local-executor" }
 axum = { workspace = true }

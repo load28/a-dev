@@ -73,12 +73,53 @@ async fn main() -> Result<()> {
         }
     };
 
+    // Initialize Docker executor if local execution is enabled
+    let use_local_executor = env::var("AUTODEV_LOCAL_EXECUTOR")
+        .unwrap_or_else(|_| "false".to_string())
+        .to_lowercase() == "true";
+
+    let docker_executor = if use_local_executor {
+        let workspace_dir = env::var("AUTODEV_WORKSPACE_DIR")
+            .unwrap_or_else(|_| "/tmp/autodev-workspace".to_string());
+
+        let anthropic_api_key = env::var("ANTHROPIC_API_KEY")
+            .expect("ANTHROPIC_API_KEY must be set for local execution");
+
+        let github_token = env::var("GITHUB_TOKEN")
+            .expect("GITHUB_TOKEN must be set for local execution");
+
+        let autodev_server_url = env::var("AUTODEV_SERVER_URL")
+            .ok();
+
+        match autodev_local_executor::DockerExecutor::new(
+            anthropic_api_key,
+            github_token,
+            autodev_server_url,
+            std::path::PathBuf::from(workspace_dir),
+        ).await {
+            Ok(executor) => {
+                tracing::info!("✓ Docker executor initialized for local execution");
+                Some(Arc::new(executor))
+            }
+            Err(e) => {
+                tracing::error!("Failed to initialize Docker executor: {}", e);
+                tracing::warn!("Falling back to GitHub Actions mode");
+                None
+            }
+        }
+    } else {
+        tracing::info!("Using GitHub Actions execution mode");
+        None
+    };
+
     // Create app state
     let state = state::ApiState {
         engine,
         db,
         github_client,
         ai_agent,
+        docker_executor,
+        use_local_executor,
     };
 
     // Build router

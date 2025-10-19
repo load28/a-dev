@@ -223,12 +223,53 @@ pub async fn execute(
                 println!("Warning: No database configured. Tasks won't be persisted.");
             }
 
+            // Initialize Docker executor if local execution is enabled
+            let use_local_executor = std::env::var("AUTODEV_LOCAL_EXECUTOR")
+                .unwrap_or_else(|_| "false".to_string())
+                .to_lowercase() == "true";
+
+            let docker_executor = if use_local_executor {
+                let workspace_dir = std::env::var("AUTODEV_WORKSPACE_DIR")
+                    .unwrap_or_else(|_| "/tmp/autodev-workspace".to_string());
+
+                let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY")
+                    .expect("ANTHROPIC_API_KEY must be set for local execution");
+
+                let github_token = std::env::var("GITHUB_TOKEN")
+                    .expect("GITHUB_TOKEN must be set for local execution");
+
+                let autodev_server_url = std::env::var("AUTODEV_SERVER_URL")
+                    .ok();
+
+                match autodev_local_executor::DockerExecutor::new(
+                    anthropic_api_key,
+                    github_token,
+                    autodev_server_url,
+                    std::path::PathBuf::from(workspace_dir),
+                ).await {
+                    Ok(executor) => {
+                        println!("✓ Docker executor initialized for local execution");
+                        Some(Arc::new(executor))
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to initialize Docker executor: {}", e);
+                        eprintln!("Falling back to GitHub Actions mode");
+                        None
+                    }
+                }
+            } else {
+                println!("Using GitHub Actions execution mode");
+                None
+            };
+
             // Create API state
             let api_state = autodev_api::state::ApiState {
                 engine,
                 db,
                 github_client,
                 ai_agent,
+                docker_executor,
+                use_local_executor,
             };
 
             // Create and run server
@@ -352,14 +393,68 @@ async fn execute_composite_task(
     println!("Auto-approve: {}", composite_task.auto_approve);
     println!("{}", "=".repeat(60));
 
-    // Use shared executor module
-    autodev_executor::execute_composite_task(
-        composite_task,
-        repository,
-        engine,
-        github_client,
-        db,
-    ).await?;
+    // Check if local executor should be used
+    let use_local_executor = std::env::var("AUTODEV_LOCAL_EXECUTOR")
+        .unwrap_or_else(|_| "false".to_string())
+        .to_lowercase() == "true";
+
+    if use_local_executor {
+        // Initialize Docker executor for local execution
+        println!("🐳 Using Docker local execution mode");
+
+        let workspace_dir = std::env::var("AUTODEV_WORKSPACE_DIR")
+            .unwrap_or_else(|_| "/tmp/autodev-workspace".to_string());
+
+        let anthropic_api_key = std::env::var("ANTHROPIC_API_KEY")
+            .expect("ANTHROPIC_API_KEY must be set for local execution");
+
+        let github_token = std::env::var("GITHUB_TOKEN")
+            .expect("GITHUB_TOKEN must be set for local execution");
+
+        let autodev_server_url = std::env::var("AUTODEV_SERVER_URL").ok();
+
+        match autodev_local_executor::DockerExecutor::new(
+            anthropic_api_key,
+            github_token,
+            autodev_server_url,
+            std::path::PathBuf::from(workspace_dir),
+        ).await {
+            Ok(executor) => {
+                let executor = Arc::new(executor);
+                autodev_executor::execute_composite_task_docker(
+                    composite_task,
+                    repository,
+                    &executor,
+                    engine,
+                    github_client,
+                    db,
+                ).await?;
+            }
+            Err(e) => {
+                eprintln!("Failed to initialize Docker executor: {}", e);
+                eprintln!("Falling back to GitHub Actions mode");
+
+                autodev_executor::execute_composite_task(
+                    composite_task,
+                    repository,
+                    engine,
+                    github_client,
+                    db,
+                ).await?;
+            }
+        }
+    } else {
+        // Use GitHub Actions execution (existing behavior)
+        println!("☁️  Using GitHub Actions execution mode");
+
+        autodev_executor::execute_composite_task(
+            composite_task,
+            repository,
+            engine,
+            github_client,
+            db,
+        ).await?;
+    }
 
     println!("\n✓ Composite task completed: {}", composite_task.title);
 
