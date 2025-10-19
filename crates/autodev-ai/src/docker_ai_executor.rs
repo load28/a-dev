@@ -9,6 +9,27 @@ use bollard::Docker;
 use futures_util::StreamExt;
 use serde::Deserialize;
 
+/// 마크다운 코드 블록 제거 헬퍼 함수
+/// ```json\n{...}\n``` 또는 ```\n{...}\n``` 패턴을 순수 JSON으로 변환
+fn strip_markdown_code_block(text: &str) -> &str {
+    let trimmed = text.trim();
+
+    // 마크다운 코드 블록으로 시작하는지 확인
+    if trimmed.starts_with("```") {
+        // 첫 번째 개행 찾기 (```json\n 또는 ```\n)
+        if let Some(start) = trimmed.find('\n') {
+            // 마지막 ``` 찾기
+            if let Some(end) = trimmed.rfind("```") {
+                if end > start {
+                    return trimmed[start+1..end].trim();
+                }
+            }
+        }
+    }
+
+    trimmed
+}
+
 /// Docker 컨테이너 기반 AI Executor
 /// Claude Code CLI를 Docker 컨테이너에서 실행하여 OAuth 토큰으로 인증
 pub struct DockerAIExecutor {
@@ -167,7 +188,16 @@ impl DockerAIExecutor {
                 })?;
 
             tracing::debug!("Extracted result from Claude CLI wrapper: {} chars", parsed.result.len());
-            Ok(parsed.result)
+
+            // 마크다운 코드 블록 제거
+            let clean_result = strip_markdown_code_block(&parsed.result);
+
+            if clean_result != parsed.result.trim() {
+                tracing::debug!("Stripped markdown code block from result");
+            }
+
+            tracing::debug!("Cleaned result: {}", clean_result);
+            Ok(clean_result.to_string())
         } else {
             Ok(output.trim().to_string())
         }
