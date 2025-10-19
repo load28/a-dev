@@ -53,25 +53,20 @@ async fn main() -> Result<()> {
     );
 
     // Initialize AI agent
-    let ai_agent: Arc<dyn autodev_ai::AIAgent> = match ai_agent_type.as_str() {
-        "claude" | "claude-code" => {
-            let api_key = env::var("ANTHROPIC_API_KEY")
-                .expect("ANTHROPIC_API_KEY must be set for Claude");
+    // Try OAuth token first (Claude subscription), fallback to API key
+    let ai_agent: Arc<dyn autodev_ai::AIAgent> =
+        if let Ok(oauth_token) = env::var("CLAUDE_CODE_OAUTH_TOKEN") {
+            tracing::info!("Using Docker-based AI executor with Claude subscription OAuth token");
+            Arc::new(
+                autodev_ai::DockerAIExecutor::new(oauth_token)
+                    .expect("Failed to initialize Docker AI executor")
+            )
+        } else if let Ok(api_key) = env::var("ANTHROPIC_API_KEY") {
+            tracing::info!("Using HTTP API-based AI agent with API key");
             Arc::new(autodev_ai::ClaudeAgent::new(api_key))
-        }
-        "gpt-4" | "openai" => {
-            tracing::warn!("OpenAI agent not implemented, using Claude instead");
-            let api_key = env::var("ANTHROPIC_API_KEY")
-                .expect("ANTHROPIC_API_KEY must be set");
-            Arc::new(autodev_ai::ClaudeAgent::new(api_key))
-        }
-        _ => {
-            tracing::warn!("Unknown AI agent type: {}, using Claude", ai_agent_type);
-            let api_key = env::var("ANTHROPIC_API_KEY")
-                .expect("ANTHROPIC_API_KEY must be set");
-            Arc::new(autodev_ai::ClaudeAgent::new(api_key))
-        }
-    };
+        } else {
+            panic!("Either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY must be set");
+        };
 
     // Initialize Docker executor if local execution is enabled
     let use_local_executor = env::var("AUTODEV_LOCAL_EXECUTOR")

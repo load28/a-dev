@@ -76,16 +76,18 @@ async fn run(cli: Cli) -> Result<()> {
             }
         }
     } else {
-        // For 'serve' command, API key is optional (Docker worker uses subscription auth)
-        match std::env::var("ANTHROPIC_API_KEY") {
-            Ok(api_key) => {
-                tracing::info!("ANTHROPIC_API_KEY available for GitHub Actions mode");
-                Arc::new(autodev_ai::ClaudeAgent::new(api_key))
-            }
-            Err(_) => {
-                tracing::info!("No ANTHROPIC_API_KEY - will rely on Docker worker subscription auth");
-                Arc::new(autodev_ai::ClaudeAgent::new(String::new()))
-            }
+        // For 'serve' command, try OAuth token first, fallback to API key
+        if let Ok(oauth_token) = std::env::var("CLAUDE_CODE_OAUTH_TOKEN") {
+            tracing::info!("Using Docker-based AI executor with Claude subscription OAuth token");
+            Arc::new(
+                autodev_ai::DockerAIExecutor::new(oauth_token)
+                    .expect("Failed to initialize Docker AI executor")
+            )
+        } else if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
+            tracing::info!("Using HTTP API-based AI agent with API key");
+            Arc::new(autodev_ai::ClaudeAgent::new(api_key))
+        } else {
+            panic!("Either CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY must be set for serve command");
         }
     };
 
